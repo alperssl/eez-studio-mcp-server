@@ -1,0 +1,22 @@
+# Licensing
+
+This repository is **dual-licensed by component**. Each component carries its own
+LICENSE file; this notice explains the split.
+
+- **MIT** — `mcp-server/`, `scripts/`, `docs/`, `.claude/`, and the repository tooling.
+  See [`mcp-server/LICENSE`](mcp-server/LICENSE).
+  The MCP server talks to EEZ Studio only over the documented WebSocket protocol
+  (`docs/PROTOCOL.md`); it does not link EEZ Studio code, so it is independently reusable
+  under the MIT license.
+
+- **GPL-3.0-only** — `bridge/` (both `src/` and `dist/`).
+  See [`bridge/LICENSE`](bridge/LICENSE).
+  The bridge is compiled into and linked with EEZ Studio and calls its internals directly,
+  making it a **derivative work of EEZ Studio** (which is GPL-3.0-only). Any distribution of a
+  bridge-enabled EEZ Studio — a from-source fork *or* a patched release binary — must comply
+  with GPL-3.0.
+
+`studio/` is **not** part of this repository — it is a local clone of EEZ Studio that you
+provide yourself (see `bridge/README.md`).
+
+Copyright (c) 2026 the eez-studio-mcp-server authors.

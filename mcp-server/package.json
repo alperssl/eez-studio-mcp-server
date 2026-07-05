@@ -1,0 +1,41 @@
+{
+  "name": "eez-studio-mcp",
+  "version": "0.1.0",
+  "description": "MCP server that connects to the EEZ Studio bridge over a localhost WebSocket and exposes tools to inspect, edit, and render the currently-open .eez-project live.",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "eez-studio",
+    "lvgl",
+    "embedded-gui"
+  ],
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "eez-studio-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "scripts",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc -w",
+    "start": "node dist/index.js",
+    "smoke": "node scripts/smoke.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "ws": "^8",
+    "zod": "^3"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/ws": "^8",
+    "typescript": "^5"
+  }
+}

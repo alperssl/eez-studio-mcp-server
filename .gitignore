@@ -1,0 +1,54 @@
+# --- EEZ Studio MCP Server: keep the repo clean & publishable (no personal data) ---
+
+# Upstream EEZ Studio clone / local fork used only for dev & testing (NOT vendored)
+/studio/
+
+# Internal research & working notes (may contain absolute paths / scratch) — not published
+/research/
+
+# Local test fixtures & sample projects (e.g. private .eez-project files under test)
+/local/
+/fixtures-private/
+*.eez-project
+*.eez-project-ui-state
+*.eez-project.bak*
+
+# Node / build
+node_modules/
+/dist/
+/mcp-server/dist/
+build/
+out/
+*.tsbuildinfo
+coverage/
+# NOTE: bridge/dist/ is intentionally tracked — the release patcher injects it.
+
+# Env & secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Temp
+tmp/
+temp/
+*.tmp
+
+# dev/test render outputs
+e2e-out/
+proof-out/
+smoke-render.png

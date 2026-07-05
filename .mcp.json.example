@@ -1,0 +1,12 @@
+{
+  "//": "Example MCP client registration for eez-studio-mcp. Copy to .mcp.json (project-scoped) or register globally — see docs/REGISTER.md. Build the server first: cd mcp-server && npm install && npm run build.",
+  "mcpServers": {
+    "eez-studio": {
+      "command": "node",
+      "args": ["./mcp-server/dist/index.js"],
+      "//env": {
+        "EEZ_MCP_BRIDGE_PORT": "38017"
+      }
+    }
+  }
+}
