@@ -4,7 +4,7 @@
     "displayName": "EEZ Studio MCP Bridge",
     "version": "0.1.1",
     "author": "eez-studio-mcp-server",
-    "description": "Hosts the localhost MCP bridge inside EEZ Studio so the eez-studio-mcp server can inspect, edit, render, run, and build the live LVGL project (203 tools). Drop-in project extension — no app patching. Adds a floating 'MCP Bridge' panel in the bottom-right corner.",
+    "description": "Hosts the localhost MCP bridge inside EEZ Studio so the eez-studio-mcp server can inspect, edit, render, run, and build the live LVGL project (207 tools). Drop-in project extension — no app patching. Adds a floating 'MCP Bridge' panel in the bottom-right corner.",
     "license": "GPL-3.0-only",
     "main": "index.js",
     "scripts": {

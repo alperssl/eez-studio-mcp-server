@@ -69,6 +69,17 @@ function resolveTarget(store, params) {
         path: params.path
     });
 }
+/**
+ * Stable "location" key for a search hit: owner path + property name. A location is
+ * uniformly replaceable-or-not, so this keys the replace-scope comparison used to flag
+ * matches that replace_in_project cannot write (report §"scope asymmetry").
+ */
+function locKey(valueObject) {
+    const owner = (0, object_1.getParent)(valueObject);
+    const path = owner ? (0, store_1.getObjectPathAsString)(owner) : "?";
+    const prop = valueObject.propertyInfo ? valueObject.propertyInfo.name : "?";
+    return path + "::" + prop;
+}
 exports.searchHandlers = {
     // --- Full-project pattern search (READ — no undo) -----------------------
     search_project(params) {
@@ -171,6 +182,9 @@ exports.searchHandlers = {
                 hits.push(valueObject);
             }
         }
+        // Locations replace CAN write (EEZ's canReplace writable-only filter is active
+        // because searchParams.replace is set). Compared below against the widest match.
+        const replaceableLocs = new Set(hits.map(locKey));
         let replacedCount = 0;
         const undoLabel = `Replace "${params.pattern}" → "${params.replacement}"`;
         store.undoManager.setCombineCommands(true);
@@ -197,7 +211,50 @@ exports.searchHandlers = {
         finally {
             store.undoManager.setCombineCommands(false); // ALWAYS restore
         }
-        return { replacedCount, undoLabel };
+        // Scope signal: some string properties match textually (search_project finds
+        // them) but are NOT writable via EEZ's search-replace — e.g. build-file code
+        // templates. Run the widest find-only pass and report matched locations replace
+        // cannot touch, so the asymmetry with search_project is not silent.
+        const searchOnlyParams = { ...searchParams, replace: undefined };
+        const skippedByLoc = new Map();
+        const SKIP_CAP = 200;
+        for (const valueObject of (0, search_1.searchForPattern)(root, searchOnlyParams, false)) {
+            if (!valueObject) {
+                continue;
+            }
+            const key = locKey(valueObject);
+            if (replaceableLocs.has(key) || skippedByLoc.has(key)) {
+                continue;
+            }
+            if (skippedByLoc.size >= SKIP_CAP) {
+                break;
+            }
+            const owner = (0, object_1.getParent)(valueObject);
+            skippedByLoc.set(key, {
+                objID: owner ? owner.objID : undefined,
+                path: owner ? (0, store_1.getObjectPathAsString)(owner) : undefined,
+                propertyName: valueObject.propertyInfo
+                    ? valueObject.propertyInfo.name
+                    : undefined,
+                label: (0, store_1.objectToString)(valueObject)
+            });
+        }
+        const skipped = Array.from(skippedByLoc.values());
+        const result = { replacedCount, undoLabel };
+        if (skipped.length > 0) {
+            result.skipped = skipped;
+            result.skippedCount = skipped.length;
+            const buildTemplate = skipped.some((s) => s.path &&
+                /\/settings\/build\/files\//.test(s.path) &&
+                s.propertyName === "template");
+            result.note =
+                "Some matches are in properties replace_in_project cannot write " +
+                    "(EEZ's search-replace covers identifiers/references, not free text)." +
+                    (buildTemplate
+                        ? " For build-file code templates use set_build_file_template or patch_build_file_template."
+                        : "");
+        }
+        return result;
     },
     // --- Path <-> objID round-trip + class/label (READ — no undo) ----------
     resolve_path(params) {

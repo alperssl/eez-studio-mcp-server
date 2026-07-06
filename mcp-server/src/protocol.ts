@@ -261,6 +261,11 @@ export const METHODS = {
   OPEN_BUILD_FOLDER: "open_build_folder",
   LIST_BUILD_CONFIGURATIONS: "list_build_configurations",
   SET_BUILD_CONFIGURATION: "set_build_configuration",
+  // Build-file code-generation templates
+  LIST_BUILD_FILES: "list_build_files",
+  GET_BUILD_FILE: "get_build_file",
+  SET_BUILD_FILE_TEMPLATE: "set_build_file_template",
+  PATCH_BUILD_FILE_TEMPLATE: "patch_build_file_template",
   // Full simulator & export
   START_FULL_SIMULATOR: "start_full_simulator",
   STOP_FULL_SIMULATOR: "stop_full_simulator",

@@ -9,7 +9,8 @@ import * as path from "path";
 
 import {
     getObjectPathAsString,
-    getLabel
+    getLabel,
+    getClassInfo
 } from "project-editor/store";
 import { MessageType, getParent } from "project-editor/core/object";
 import { Section } from "project-editor/store/output-sections";
@@ -106,6 +107,39 @@ function readGeneratedFiles(destAbs: string): string[] {
     }
 }
 
+// Map undefined values to null so every declared settings field is always PRESENT in
+// the JSON payload (JSON.stringify drops undefined). Lets a caller see the full panel —
+// an empty field reads as null rather than silently vanishing.
+function coalesceNull(obj: any): any {
+    const out: any = {};
+    for (const k of Object.keys(obj)) {
+        out[k] = obj[k] === undefined ? null : obj[k];
+    }
+    return out;
+}
+
+// Split a settings patch into keys the object's classInfo actually declares (applied)
+// vs unknown keys (ignored), so a typo'd / unsupported field is surfaced to the caller
+// rather than silently dropped by updateObject's own validation.
+function splitByClassInfo(
+    obj: any,
+    patch: any
+): { applied: any; ignored: string[] } {
+    const valid = new Set<string>(
+        (getClassInfo(obj).properties || []).map((p: any) => p.name)
+    );
+    const applied: any = {};
+    const ignored: string[] = [];
+    for (const k of Object.keys(patch)) {
+        if (valid.has(k)) {
+            applied[k] = patch[k];
+        } else {
+            ignored.push(k);
+        }
+    }
+    return { applied, ignored };
+}
+
 export const projectHandlers: Record<string, Handler> = {
     // Full read of project settings — superset of get_project_info. Pure read of the
     // two live EezObjects; no mutation, no async.
@@ -127,7 +161,7 @@ export const projectHandlers: Record<string, Handler> = {
             colorBpp: g.colorBpp,
             lvglInclude: b.lvglInclude,
             buildDestination: b.destinationFolder ?? null,
-            general: {
+            general: coalesceNull({
                 projectType: g.projectType,
                 projectVersion: g.projectVersion,
                 lvglVersion: g.lvglVersion,
@@ -144,12 +178,18 @@ export const projectHandlers: Record<string, Handler> = {
                 cacheFonts: g.cacheFonts,
                 title: g.title,
                 description: g.description,
+                image: g.image,
+                icon: g.icon,
                 keywords: g.keywords,
                 author: g.author,
+                authorLink: g.authorLink,
                 targetPlatform: g.targetPlatform,
-                minStudioVersion: g.minStudioVersion
-            },
-            build: {
+                targetPlatformLink: g.targetPlatformLink,
+                minStudioVersion: g.minStudioVersion,
+                masterProject: g.masterProject,
+                css: g.css
+            }),
+            build: coalesceNull({
                 destinationFolder: b.destinationFolder ?? null,
                 lvglInclude: b.lvglInclude,
                 screensLifetimeSupport: b.screensLifetimeSupport,
@@ -164,7 +204,7 @@ export const projectHandlers: Record<string, Handler> = {
                 separateFolderForImagesAndFonts:
                     b.separateFolderForImagesAndFonts,
                 useDockerDesktop: b.useDockerDesktop
-            }
+            })
         };
     },
 
@@ -175,32 +215,37 @@ export const projectHandlers: Record<string, Handler> = {
         const store = requireProjectStore();
         const general = params.general;
         const build = params.build;
-        if (
-            (!general || typeof general !== "object") &&
-            (!build || typeof build !== "object")
-        ) {
+        const hasGeneral = general && typeof general === "object";
+        const hasBuild = build && typeof build === "object";
+        if (!hasGeneral && !hasBuild) {
             throw new BridgeError(
                 "BAD_PARAMS",
-                "Provide 'general' and/or 'build' object(s) to update."
+                "Provide 'general' and/or 'build' object(s) to update (flat key -> value maps)."
             );
         }
 
-        const um = store.undoManager;
-        const combine =
-            general &&
-            typeof general === "object" &&
-            build &&
-            typeof build === "object";
+        const settings = store.project.settings;
+        const g = hasGeneral
+            ? splitByClassInfo(settings.general, general)
+            : { applied: {}, ignored: [] };
+        const b = hasBuild
+            ? splitByClassInfo(settings.build, build)
+            : { applied: {}, ignored: [] };
 
+        const gCount = Object.keys(g.applied).length;
+        const bCount = Object.keys(b.applied).length;
+
+        const um = store.undoManager;
+        const combine = gCount > 0 && bCount > 0;
         if (combine) {
             um.setCombineCommands(true);
         }
         try {
-            if (general && typeof general === "object") {
-                store.updateObject(store.project.settings.general, general);
+            if (gCount > 0) {
+                store.updateObject(settings.general, g.applied);
             }
-            if (build && typeof build === "object") {
-                store.updateObject(store.project.settings.build, build);
+            if (bCount > 0) {
+                store.updateObject(settings.build, b.applied);
             }
         } finally {
             if (combine) {
@@ -208,16 +253,25 @@ export const projectHandlers: Record<string, Handler> = {
             }
         }
 
-        return {
+        const result: any = {
             updated: {
-                general:
-                    general && typeof general === "object"
-                        ? Object.keys(general)
-                        : [],
-                build:
-                    build && typeof build === "object" ? Object.keys(build) : []
+                general: Object.keys(g.applied),
+                build: Object.keys(b.applied)
             }
         };
+        // Surface unknown keys instead of silently dropping them (parity with the
+        // replace_in_project scope signal).
+        const ignored = [
+            ...g.ignored.map((k: string) => "general." + k),
+            ...b.ignored.map((k: string) => "build." + k)
+        ];
+        if (ignored.length > 0) {
+            result.ignored = ignored;
+            result.note =
+                "These keys are not valid settings.general / settings.build properties and were " +
+                "ignored (see get_settings for the available fields).";
+        }
+        return result;
     },
 
     // Run EEZ's real Generate (Build 🔧): buildProject(store,"buildFiles") writes the

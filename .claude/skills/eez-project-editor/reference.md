@@ -23,7 +23,7 @@ modes — it is the LVGL widget-tree contract. The **difference is how logic is 
   runtime. The bridge authors flow graphs directly (e.g. `create_flow_component`,
   `connect_components`, `set_reactive_flag`/`set_reactive_state`).
 
-The full **203-method** bridge contract (pages, widgets + sub-items, styles,
+The full **207-method** bridge contract (pages, widgets + sub-items, styles,
 assets/fonts/bitmaps/colors, variables/enums/structures/user-widgets, groups/themes,
 i18n/texts, project-wide search/clipboard/navigation, the flow graph, the LVGL-WASM
 simulator, and code generation/build) is authoritative in [../../../docs/PROTOCOL.md](../../../docs/PROTOCOL.md).

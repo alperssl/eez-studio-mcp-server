@@ -1,12 +1,12 @@
 ---
 name: eez-project-editor
-description: Author, edit, render, and run EEZ Studio v3 LVGL ".eez-project" designs (flow or no-flow, LVGL 8.4/9.x) — LIVE via the eez-studio-mcp bridge driving a running EEZ Studio (203 tools, primary), or by exact source-verified raw-JSON editing when EEZ Studio is closed (fallback).
+description: Author, edit, render, and run EEZ Studio v3 LVGL ".eez-project" designs (flow or no-flow, LVGL 8.4/9.x) — LIVE via the eez-studio-mcp bridge driving a running EEZ Studio (207 tools, primary), or by exact source-verified raw-JSON editing when EEZ Studio is closed (fallback).
 ---
 
 # EEZ Studio `.eez-project` LVGL Editor
 
 Design and edit EEZ Studio **version 3, LVGL** projects — **flow or no-flow**, LVGL **8.4 or 9.x** —
-**collaboratively with a running EEZ Studio**, driven through the **`eez-studio-mcp`** bridge (203
+**collaboratively with a running EEZ Studio**, driven through the **`eez-studio-mcp`** bridge (207
 tools). The agent inspects the live project, makes edits that appear in the GUI instantly, and
 self-checks each change against EEZ's own pixel-exact LVGL-WASM preview (and, for behavior, the live
 simulator).
@@ -30,7 +30,7 @@ the **offline fallback** for when EEZ Studio is closed (§8).
 
 | Mode | Condition | How you work |
 |---|---|---|
-| **PRIMARY — live MCP** | The `eez-studio-mcp` tools are available (EEZ Studio with the MCP Bridge extension installed and a project open) | Drive the live project via the 203 tools: inspect → edit → **`render_page`** → diagnostics → adjust (§§3–7). |
+| **PRIMARY — live MCP** | The `eez-studio-mcp` tools are available (EEZ Studio with the MCP Bridge extension installed and a project open) | Drive the live project via the 207 tools: inspect → edit → **`render_page`** → diagnostics → adjust (§§3–7). |
 | **FALLBACK — raw-JSON** | Tools absent / return "launch EEZ Studio first" | Hand-edit the `.eez-project` JSON in the exact source-verified format; validate + lint statically (§8). |
 
 If a tool call returns a "launch EEZ Studio first" / bridge-not-running error, the bridge isn't up —
@@ -48,7 +48,7 @@ with the true render.
   name-mapping tables). The deep catalog for value formats and (in fallback) raw JSON.
 - **[`rendering-rules.md`](rendering-rules.md)** — source-cited render-correctness rules (why a
   valid edit still renders wrong). Condensed in §6; read the file before authoring complex screens.
-- **`docs/PROTOCOL.md`** (in the `eez-studio-mcp` repo) — the full wire contract for all 203 tools
+- **`docs/PROTOCOL.md`** (in the `eez-studio-mcp` repo) — the full wire contract for all 207 tools
   (exact params + result shapes). The authoritative source when you need a tool's precise signature.
 
 ---
@@ -87,7 +87,7 @@ it is your **ground truth** for every geometry/zoom/clip/style question.
   **Never pass `LV_*` constants or BGR ints.** The `LV_…` prefix and bit codes are added only at
   C-build time.
 
-## 2. The 203 tools, grouped
+## 2. The 207 tools, grouped
 
 Full params + result shapes for **every** tool are in **`docs/PROTOCOL.md`** — the authoritative
 signature source; consult it before a first-time call. Below is the working map, grouped by intent.
@@ -96,7 +96,10 @@ Start every session with **`get_project_info`** / **`get_settings`** to learn `l
 
 **Inspect (read-only):**
 - `get_project_info` → `{ name, projectVersion, lvglVersion, flowSupport, displayWidth,
-  displayHeight, isModified, pages[] }`. `get_settings` → the full general+build settings.
+  displayHeight, isModified, pages[] }`. `get_settings` → the **entire Settings › General + Build panel**
+  (`general` { displayWidth, displayHeight, circularDisplay, darkTheme, flowSupport, embedBitmaps, embedFonts,
+  cacheFonts, description, image, author, authorLink, targetPlatform(+Link), minStudioVersion, … } + `build`),
+  every field present (`null` when empty) — edit any of it with `update_settings`.
 - `list_pages`; `get_page_tree({ page })` → nested `WidgetNode` tree (every `objID`, `type`,
   `identifier`, `rect`+units, `useStyle`, `hasLocalStyles`, `text`, `children`); `get_widget({ objID })`
   → full `WidgetDetail` (`props`, `localStyles` `{part:{state:{prop:value}}}`, `eventHandlers`);
@@ -179,9 +182,22 @@ the editor preview). `pause/resume/step_simulator` are flow-debugger controls (f
 
 **Build:** `build` (EEZ codegen to disk → `{ ok, errors, warnings, generatedFiles }`), `build_assets`
 (in-memory validation, no files), `get_build_destination`, `open_build_folder`, `list/set_build_configuration`.
+Build-file codegen templates (the per-file templates the build expands into generated source — `ui.c`,
+`screens.c`, …; the correct place to customize *generated* code, e.g. a global screen-load animation
+`lv_scr_load_anim(..., LV_SCR_LOAD_ANIM_FADE_IN, 200, 0, false)`, since editing the generated file is
+lost on the next rebuild): `list_build_files` (READ → `{ files:[{ index, fileName, objID, templateLength }] }`,
+lists `settings.build.files`), `get_build_file` (READ; `{ fileName|index|objID }` → `{ index, fileName,
+objID, template }`, the full template text of one file), `set_build_file_template` (WRITE, one undo step;
+`{ fileName|index|objID, template }` — replaces a build-file template in full), `patch_build_file_template`
+(WRITE, one undo step; `{ fileName|index|objID, find, replacement, matchCase?=true, expectedCount? }` —
+literal (non-regex) find/replace inside one template; case-sensitive by default; `expectedCount` guards;
+0 matches ⇒ no change).
 
 **Search / nav / clipboard / editors:** `search_project`, `find_references`, `is_referenced`,
-`replace_in_project`, `resolve_path` (objID↔EEZ path), `copy/cut/paste_objects`, `get_clipboard_info`,
+`replace_in_project` (→ `{ replacedCount, skipped?, note? }`; EEZ's replace covers identifiers/references,
+not free text like build templates — hits it can't write are reported in `skipped` with a `note`
+pointing to `set_build_file_template`/`patch_build_file_template` rather than silently returning
+`replacedCount:0`), `resolve_path` (objID↔EEZ path), `copy/cut/paste_objects`, `get_clipboard_info`,
 `reveal_object`/`select_widget`/`select_all`/`set_selection`, `open_page`/`open_editor`/`activate_editor`/
 `close_editor`/`list_editors`/`get_active_editor`, `get_navigation_state`/`select_in_navigation`,
 scrapbook (`list_scrapbook_items`/`insert_scrapbook_item`/`save_selection_to_scrapbook`).

@@ -66,6 +66,72 @@ function collectProblems(section) {
     walk(section?.messages?.messages || []);
     return out;
 }
+// --- Build-file (code-generation template) helpers ---------------------------
+/** The live build settings object, or throw. */
+function requireBuild(store) {
+    const build = store.project.settings?.build;
+    if (!build) {
+        throw new protocol_1.BridgeError("NOT_FOUND", "Project has no build settings (dashboard / master project).");
+    }
+    return build;
+}
+/** The live build-file template array (settings.build.files). */
+function buildFiles(store) {
+    return requireBuild(store).files || [];
+}
+/** Resolve one build file by objID | index | fileName. Returns { file, index }. */
+function resolveBuildFile(store, params) {
+    const files = buildFiles(store);
+    if (params.objID != undefined) {
+        const i = files.findIndex((f) => f.objID === params.objID);
+        if (i < 0) {
+            throw new protocol_1.BridgeError("NOT_FOUND", `No build file with objID "${params.objID}".`);
+        }
+        return { file: files[i], index: i };
+    }
+    if (params.index != undefined) {
+        const i = Number(params.index);
+        if (!Number.isInteger(i) || i < 0 || i >= files.length) {
+            throw new protocol_1.BridgeError("NOT_FOUND", `Build file index ${params.index} is out of range (0..${files.length - 1}).`);
+        }
+        return { file: files[i], index: i };
+    }
+    if (params.fileName != undefined) {
+        const matches = files
+            .map((f, i) => ({ f, i }))
+            .filter((x) => x.f.fileName === params.fileName);
+        if (matches.length === 0) {
+            throw new protocol_1.BridgeError("NOT_FOUND", `No build file named "${params.fileName}".`);
+        }
+        if (matches.length > 1) {
+            throw new protocol_1.BridgeError("BAD_PARAMS", `Multiple build files named "${params.fileName}"; address it by index or objID instead.`);
+        }
+        return { file: matches[0].f, index: matches[0].i };
+    }
+    throw new protocol_1.BridgeError("BAD_PARAMS", "One of fileName, objID, or index is required.");
+}
+/** Literal (non-regex) find/replace; returns the new string + occurrence count. */
+function literalReplaceAll(str, find, replacement, matchCase) {
+    if (matchCase) {
+        const parts = str.split(find);
+        return { out: parts.join(replacement), count: parts.length - 1 };
+    }
+    // Case-insensitive literal scan; lowercasing preserves length, so the indices
+    // computed against the lowercased copy are valid against the original string.
+    const lower = str.toLowerCase();
+    const needle = find.toLowerCase();
+    let out = "";
+    let prev = 0;
+    let count = 0;
+    let idx = lower.indexOf(needle, prev);
+    while (idx !== -1) {
+        out += str.substring(prev, idx) + replacement;
+        prev = idx + needle.length;
+        count++;
+        idx = lower.indexOf(needle, prev);
+    }
+    return { out: out + str.substring(prev), count };
+}
 exports.buildOpsHandlers = {
     // Build in-memory LVGL assets without writing files (fast validation).
     // store.buildAssets() = buildProject(store,"buildAssets"): assembles `parts` in
@@ -151,5 +217,86 @@ exports.buildOpsHandlers = {
         }
         (0, mobx_1.runInAction)(() => store.uiStateStore.setSelectedBuildConfiguration(name));
         return { selected: store.selectedBuildConfiguration?.name ?? name };
+    },
+    // --- Build FILE templates (code-generation source) -----------------------
+    // The per-file codegen templates at settings.build.files[N] carry the source the
+    // LVGL/codegen pipeline expands into the generated files (e.g. ui.c). Editing the
+    // GENERATED file is lost on the next rebuild; the template is the correct edit
+    // target. Each BuildFile is an EezObject with { fileName, template, objID }; writes
+    // go through updateObject (ONE undo step), so the GUI + undo stay consistent.
+    // List every build-file template: index + fileName + objID + template size.
+    list_build_files() {
+        const store = (0, project_access_1.requireProjectStore)();
+        const files = buildFiles(store);
+        return {
+            files: files.map((f, index) => ({
+                index,
+                fileName: f.fileName,
+                objID: f.objID,
+                templateLength: (f.template || "").length
+            }))
+        };
+    },
+    // Read one build-file template in full. Address by fileName | objID | index.
+    get_build_file(params) {
+        const store = (0, project_access_1.requireProjectStore)();
+        const { file, index } = resolveBuildFile(store, params);
+        return {
+            index,
+            fileName: file.fileName,
+            objID: file.objID,
+            template: file.template != undefined ? file.template : ""
+        };
+    },
+    // Replace a build-file template in full (ONE undo step). Address by fileName|objID|index.
+    set_build_file_template(params) {
+        const store = (0, project_access_1.requireProjectStore)();
+        if (typeof params.template !== "string") {
+            throw new protocol_1.BridgeError("BAD_PARAMS", "template (string) is required.");
+        }
+        const { file, index } = resolveBuildFile(store, params);
+        store.updateObject(file, { template: params.template });
+        return {
+            index,
+            fileName: file.fileName,
+            objID: file.objID,
+            templateLength: params.template.length
+        };
+    },
+    // Scoped find/replace INSIDE one build-file template (ONE undo step). Literal (not
+    // regex), case-sensitive by default (code is case-sensitive). Optional expectedCount
+    // guards against an unexpected match count; 0 matches => no write, changed:false.
+    patch_build_file_template(params) {
+        const store = (0, project_access_1.requireProjectStore)();
+        if (typeof params.find !== "string" || params.find.length === 0) {
+            throw new protocol_1.BridgeError("BAD_PARAMS", "find (non-empty string) is required.");
+        }
+        if (typeof params.replacement !== "string") {
+            throw new protocol_1.BridgeError("BAD_PARAMS", "replacement (string) is required.");
+        }
+        const { file, index } = resolveBuildFile(store, params);
+        const before = file.template != undefined ? file.template : "";
+        const matchCase = params.matchCase !== false;
+        const { out, count } = literalReplaceAll(before, params.find, params.replacement, matchCase);
+        if (params.expectedCount != undefined && count !== params.expectedCount) {
+            throw new protocol_1.BridgeError("BAD_PARAMS", `Expected ${params.expectedCount} occurrence(s) of the find text but found ${count}.`);
+        }
+        if (count === 0) {
+            return {
+                index,
+                fileName: file.fileName,
+                objID: file.objID,
+                replacedCount: 0,
+                changed: false
+            };
+        }
+        store.updateObject(file, { template: out });
+        return {
+            index,
+            fileName: file.fileName,
+            objID: file.objID,
+            replacedCount: count,
+            changed: true
+        };
     }
 };

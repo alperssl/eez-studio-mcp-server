@@ -146,7 +146,7 @@ Studio (with the bridge) first.
 
 ## MCP tools
 
-All 203 tools, grouped. See [`docs/PROTOCOL.md` §4](docs/PROTOCOL.md) for exact
+All 207 tools, grouped. See [`docs/PROTOCOL.md` §4](docs/PROTOCOL.md) for exact
 params/results. Widgets are addressed by stable `objID`; pages by `name`. Values
 use the object-model string form (colors `#rrggbb` or theme name, opacity `0–255`,
 enums bare without `LV_`, fonts/bitmaps by name).
@@ -286,7 +286,7 @@ enums bare without `LV_`, fonts/bitmaps by name).
 |------|---------|
 | `search_project` | Full-project text/pattern search over every searchable property. |
 | `find_references` · `is_referenced` | Where an object is referenced (graph / fast boolean — gates safe delete). |
-| `replace_in_project` | Project-wide replace as one undo step. |
+| `replace_in_project` | Project-wide replace as one undo step → `{ replacedCount, skipped?, note? }`. EEZ's replace covers identifiers/references, not free text like build templates; unwritable hits are reported in `skipped` with a `note` pointing to `set_build_file_template` / `patch_build_file_template`. |
 | `resolve_path` | Translate between EEZ string path and `objID`/class/label (both directions). |
 
 ### Clipboard
@@ -354,6 +354,9 @@ enums bare without `LV_`, fonts/bitmaps by name).
 | `get_build_destination` | Resolve the build output folder (relative/absolute/exists). |
 | `open_build_folder` | Reveal the build folder in the OS file manager. |
 | `list_build_configurations` · `set_build_configuration` | Read/select the active build configuration. |
+| `list_build_files` · `get_build_file` | *(read)* Enumerate `settings.build.files` (per-file codegen templates the build expands into `ui.c`, `screens.c`, …) / read one template in full. |
+| `set_build_file_template` | Replace a build-file template in full (one undo step). |
+| `patch_build_file_template` | Literal (non-regex) find/replace inside one build-file template — `matchCase` (default `true`), `expectedCount` guard; 0 matches ⇒ no change (one undo step). This is the correct place to customize **generated** code (e.g. the global `lv_scr_load_anim(…, LV_SCR_LOAD_ANIM_FADE_IN, 200, 0, false)`); editing the generated file is lost on the next rebuild. |
 
 ### Full simulator & export
 | Tool | Purpose |

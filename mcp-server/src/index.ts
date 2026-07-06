@@ -839,16 +839,19 @@ registerBridgeTool(METHODS.DELETE_VARIABLE, {
 registerBridgeTool(METHODS.GET_SETTINGS, {
   title: "Get settings",
   description:
-    "Read project settings — a superset of get_project_info: { displayWidth, displayHeight, projectVersion, lvglVersion, " +
-    "colorFormat, lvglInclude, flowSupport, buildDestination, ... }. Read-only.",
+    "Read project settings — the whole Settings › General + Build panel. Returns a flat superset plus nested " +
+    "`general` { projectType, lvglVersion, flowSupport, displayWidth, displayHeight, circularDisplay, displayBorderRadius, " +
+    "darkTheme, embedBitmaps, embedFonts, cacheFonts, title, description, image, icon, keywords, author, authorLink, " +
+    "targetPlatform, targetPlatformLink, minStudioVersion, masterProject, css } and `build` { destinationFolder, lvglInclude, ... }. Read-only.",
   inputSchema: {},
 });
 
 registerBridgeTool(METHODS.UPDATE_SETTINGS, {
   title: "Update settings",
   description:
-    "Update project settings via updateObject(settings.general | settings.build, ...). Pass a general and/or build map " +
-    "of setting key -> value. Returns { updated }. One undo step." +
+    "Edit the Settings › General / Build panel: updateObject(settings.general | settings.build, ...). Pass a `general` " +
+    "and/or `build` map of setting key -> value (e.g. { general: { displayWidth: 800, darkTheme: true, author: \"...\" } }). " +
+    "Returns { updated, ignored?, note? } — unknown keys are reported in `ignored`, not silently dropped. One undo step." +
     VALUE_FORMAT_NOTE,
   inputSchema: {
     general: z
@@ -1357,8 +1360,11 @@ registerBridgeTool(METHODS.FIND_REFERENCES, {
 registerBridgeTool(METHODS.REPLACE_IN_PROJECT, {
   title: "Replace in project",
   description:
-    "Find-and-replace a text pattern across the project. Optionally scope with target (a path/collection). " +
-    "Returns { replaced }. One undo step.",
+    "Find-and-replace a text pattern across the project (identifiers, references, expressions, texts). " +
+    "Optionally scope with target (a path/collection). Returns { replacedCount, skipped?, note? } — one undo step. " +
+    "Some string properties match textually but are NOT writable here (EEZ's replace covers identifiers/references, " +
+    "not free text): those are reported in `skipped`. For build-file code templates use set_build_file_template / " +
+    "patch_build_file_template.",
   inputSchema: {
     pattern: z.string().describe("Text pattern to find."),
     replacement: z.string().describe("Replacement text."),
@@ -1962,6 +1968,57 @@ registerBridgeTool(METHODS.SET_BUILD_CONFIGURATION, {
     "Select the active build configuration by name (see list_build_configurations). Returns the selected configuration. One undo step.",
   inputSchema: {
     name: z.string().describe("Name of the build configuration to activate."),
+  },
+});
+
+// --- Build-file code-generation templates ----------------------------------
+// The per-file codegen templates at settings.build.files[N] are the SOURCE the
+// LVGL/codegen pipeline expands into the generated files (e.g. ui.c). Editing the
+// generated file is lost on rebuild — edit the template here instead.
+
+const buildFileTarget = {
+  fileName: z.string().optional().describe('Build-file name, e.g. "ui.c" (unique; else use index/objID).'),
+  index: z.number().int().nonnegative().optional().describe("Build-file index (see list_build_files)."),
+  objID: z.string().optional().describe("Build-file objID (see list_build_files / search_project)."),
+};
+
+registerBridgeTool(METHODS.LIST_BUILD_FILES, {
+  title: "List build-file templates",
+  description:
+    "List the project's code-generation file templates (settings.build.files): [{ index, fileName, objID, templateLength }]. " +
+    "These templates are expanded by the build into the generated source files. Read-only.",
+  inputSchema: {},
+});
+
+registerBridgeTool(METHODS.GET_BUILD_FILE, {
+  title: "Get build-file template",
+  description:
+    "Return one build-file template in full: { index, fileName, objID, template }. Address it by fileName, index, or objID. Read-only.",
+  inputSchema: { ...buildFileTarget },
+});
+
+registerBridgeTool(METHODS.SET_BUILD_FILE_TEMPLATE, {
+  title: "Set build-file template",
+  description:
+    "Replace a build-file code template in full (settings.build.files[N].template) — the correct place to customize generated code " +
+    "(e.g. the screen-load animation in ui.c). Address by fileName, index, or objID. One undo step.",
+  inputSchema: {
+    ...buildFileTarget,
+    template: z.string().describe("The complete new template text."),
+  },
+});
+
+registerBridgeTool(METHODS.PATCH_BUILD_FILE_TEMPLATE, {
+  title: "Patch build-file template",
+  description:
+    "Literal find/replace INSIDE one build-file template (case-sensitive by default — code is case-sensitive). " +
+    "Address by fileName, index, or objID. Returns { replacedCount, changed }. One undo step; 0 matches makes no change.",
+  inputSchema: {
+    ...buildFileTarget,
+    find: z.string().min(1).describe("Exact substring to find (literal, not a regex)."),
+    replacement: z.string().describe("Replacement text."),
+    matchCase: z.boolean().optional().describe("Case-sensitive match (default true)."),
+    expectedCount: z.number().int().nonnegative().optional().describe("If set, fail unless exactly this many matches are found."),
   },
 });
 

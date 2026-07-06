@@ -1,6 +1,6 @@
 ---
 name: eez-editor
-description: Inspects, edits, renders, and runs EEZ Studio `.eez-project` LVGL designs (v3; flow or no-flow) — LIVE via the eez-studio-mcp bridge driving a running EEZ Studio (203 tools, primary), or by exact source-verified raw-JSON editing when EEZ Studio is closed (fallback).
+description: Inspects, edits, renders, and runs EEZ Studio `.eez-project` LVGL designs (v3; flow or no-flow) — LIVE via the eez-studio-mcp bridge driving a running EEZ Studio (207 tools, primary), or by exact source-verified raw-JSON editing when EEZ Studio is closed (fallback).
 tools: ["Read", "Write", "Edit", "Bash", "Grep", "Glob"]
 ---
 
@@ -26,7 +26,7 @@ returns EEZ's pixel-exact LVGL-WASM preview, and `run_simulator`/`screenshot_sim
 LVGL runtime — so your edits are always model-valid, appear in the GUI instantly, are undoable, and
 are verifiable against the true render.
 
-The bridge exposes **203 tools**. Full params/results in `docs/PROTOCOL.md`; grouped here by intent
+The bridge exposes **207 tools**. Full params/results in `docs/PROTOCOL.md`; grouped here by intent
 (representative names — the skill's SKILL.md has the complete catalog):
 
 - **Inspect (read-only):** `get_project_info`, `get_settings`, `list_pages`, `get_page_tree`,
@@ -64,15 +64,28 @@ The bridge exposes **203 tools**. Full params/results in `docs/PROTOCOL.md`; gro
 - **Simulator:** `run_simulator`/`stop_simulator`, `get_simulator_status`, `screenshot_simulator`
   (captures the live LVGL-WASM frame as PNG); `pause/resume/step_simulator` *(flow debugger)*.
 - **Build:** `build` (codegen to disk), `build_assets` (in-memory), `get_build_destination`,
-  `open_build_folder`, `list/set_build_configuration`; `run_checks`, `get_problems`.
+  `open_build_folder`, `list/set_build_configuration`; `run_checks`, `get_problems`. **Build-file
+  codegen templates** (`settings.build.files` — the per-file templates the build expands into
+  generated source like `ui.c`/`screens.c`; edit these to customize GENERATED code, e.g. the global
+  `lv_scr_load_anim(…, LV_SCR_LOAD_ANIM_FADE_IN, 200, 0, false)` — editing the generated file is lost
+  on the next rebuild): `list_build_files` (read), `get_build_file` (read; `{fileName|index|objID}` →
+  full `template`), `set_build_file_template` (write, one undo — replaces a template in full),
+  `patch_build_file_template` (write, one undo — literal, non-regex `find`/`replacement` in one
+  template; `matchCase` defaults true, `expectedCount` guards, 0 matches ⇒ no change).
 - **Search / nav / clipboard / editors:** `search_project`, `find_references`, `is_referenced`,
-  `replace_in_project`, `resolve_path`, `copy/cut/paste_objects`, `reveal_object`, `open_page`/
+  `replace_in_project` (returns `{ replacedCount, skipped?, note? }` — EEZ's replace covers
+  identifiers/references, not free text like build templates; unwritable matches are reported in
+  `skipped` with a `note` pointing to `set_build_file_template`/`patch_build_file_template`),
+  `resolve_path`, `copy/cut/paste_objects`, `reveal_object`, `open_page`/
   `open_editor`/`activate_editor`/`close_editor`/`list_editors`, `select_widget`/`select_all`/
   `set_selection`, navigation state, scrapbook.
 - **Diagnostics (three surfaces — check ALL):** `run_checks`/`get_problems` (EEZ **static**
   validation), `get_console_log` (**runtime** preview problems, e.g. missing glyphs),
   `get_notifications` (EEZ **toast** errors, e.g. `Font "..." extraction failed`).
-- **Project / lifecycle:** `update_settings`, `list/enable/disable_feature`, imports, build configs,
+- **Project / lifecycle:** `update_settings` (edit the whole **Settings › General + Build** panel — display
+  size, dark theme, flow support, embed bitmaps/fonts, description/image/author/links, min studio version,
+  build destination, …; `get_settings` reads them all back, `null` when empty; unknown keys come back in
+  `ignored`), `list/enable/disable_feature`, imports, build configs,
   `set_readme`, `set_zoom`, `save`/`save_as`, `undo`/`redo`, `open/new/reload_project`, `set_theme`,
   `open_view_tab`. Instrument/dashboard: `manage_scpi/instrument_commands/shortcuts`, `set_micropython`,
   extension definitions.

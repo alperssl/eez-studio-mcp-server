@@ -3,7 +3,7 @@
 > Teaching guide for operating **EEZ Studio** the way an experienced human user does, focused on
 > **LVGL, EEZ project version 3** projects — **flow OR no-flow** (default LVGL 8.4.0; supports 8.4.0
 > through 9.5.0, with 9.x differences noted). This teaches the *tool*; the live editing wire contract
-> (the full **203-method** bridge) is in [`PROTOCOL.md`](PROTOCOL.md).
+> (the full **207-method** bridge) is in [`PROTOCOL.md`](PROTOCOL.md).
 >
 > Non-obvious claims are cited with a URL or an EEZ Studio source-file reference.
 
@@ -219,7 +219,7 @@ e.g. `TRUE COLOR ALPHA` = `LV_IMG_CF_TRUE_COLOR_ALPHA` for RGBA PNGs; also `ALPH
 
 These apply to any **LVGL v3** project (flow or no-flow); steps that differ are labeled. When EEZ
 Studio is running with the MCP bridge, prefer driving these via the **`eez-studio-mcp` tools** — the
-full **203-method** surface covering pages, widgets, styles, assets (fonts/bitmaps/colors), variables,
+full **207-method** surface covering pages, widgets, styles, assets (fonts/bitmaps/colors), variables,
 the flow graph, code generation/build, and the LVGL-WASM simulator (see [`PROTOCOL.md`](PROTOCOL.md)) —
 and **self-check every change with `render_page`**.
 

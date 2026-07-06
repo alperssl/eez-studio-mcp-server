@@ -12,7 +12,7 @@ agent/client ⇄ (stdio, MCP) ⇄ mcp-server (Node) ⇄ (localhost WebSocket, th
 This document is the single source of truth for both sides. It is transport-agnostic about MCP;
 it only defines the **bridge WebSocket protocol**.
 
-**Scope.** The protocol below is the authoritative **203-method** contract covering the *full* EEZ
+**Scope.** The protocol below is the authoritative **207-method** contract covering the *full* EEZ
 Studio project surface: pages/screens, widgets (+ sub-items, flags/states/layout/scroll/grid),
 styles, assets (fonts/bitmaps/colors), variables/enums/structures/user-widgets, groups/themes,
 i18n/texts, project-wide search/references/clipboard/navigation, the visual **flow graph** (flow
@@ -202,10 +202,20 @@ leftUnit, ..., text, textType, widgetFlags, states, useStyle, zoom, angle, image
 ### Project / build
 | Method | Params | Result |
 |---|---|---|
-| `get_settings` | — | `{ displayWidth, displayHeight, projectVersion, lvglVersion, colorFormat, lvglInclude, flowSupport, buildDestination, ... }` — superset of `get_project_info` |
-| `update_settings` | `{ general?, build? }` | `{ updated }` — via `updateObject(settings.general\|settings.build, …)` |
+| `get_settings` | — | superset of `get_project_info` + the full **Settings › General/Build panel** as nested `general` / `build` objects (see below) |
+| `update_settings` | `{ general?, build? }` | `{ updated, ignored?, note? }` — via `updateObject(settings.general\|settings.build, …)`, ONE undo step |
 | `build` | — | `{ ok, errors: Problem[], warnings: Problem[], generatedFiles: string[] }` — runs EEZ's Check + Generate (non-Docker LVGL codegen) to the configured destination |
 
+- **`get_settings` / `update_settings` cover the whole Settings › General + Build panel.** `get_settings`
+  returns nested `general` `{ projectType, lvglVersion, flowSupport, displayWidth, displayHeight,
+  circularDisplay, displayBorderRadius, darkTheme, embedBitmaps, embedFonts, cacheFonts, title, description,
+  image, icon, keywords, author, authorLink, targetPlatform, targetPlatformLink, minStudioVersion,
+  masterProject, css }` and `build` `{ destinationFolder, lvglInclude, … }` — every declared field is always
+  present (**`null` when empty**, since JSON drops `undefined`). `update_settings` takes a flat `general`
+  and/or `build` key→value map and writes via `updateObject` (one undo step; combined when both given); a key
+  that is not a real `settings.general`/`settings.build` property is returned in **`ignored`** (with a `note`)
+  rather than silently dropped. The panel's array sections (`imports`, `extensions`, `resourceFiles`, build
+  `configurations`, build `files`) have their own dedicated tools.
 - Assets/pages/styles/actions/colors/variables are addressed by **unique name** (like pages). Every
   mutation goes through the ProjectStore command/undo API — one undo step per call — exactly like the
   §4 Edit tools. `add_bitmap`/`add_font`/`edit_font`/`build` may run an async convert/extract/generate step.
@@ -374,7 +384,7 @@ present and round-trips through `resolve_path`.
 |---|---|---|
 | `search_project` | `{ pattern, matchCase?, matchWholeWord?, limit?=500 }` | `{ results: Row[], count, truncated }` — substring (or `\bword\b`) match over searchable props |
 | `find_references` | `{ objID? \| path? }` | `{ references: Row[], count }` — every place the target is referenced (collection refs + expression usages) |
-| `replace_in_project` | `{ pattern, replacement, matchCase?, matchWholeWord?, target? }` | `{ replacedCount, undoLabel }` — project-wide find/replace, **ONE undo step** |
+| `replace_in_project` | `{ pattern, replacement, matchCase?, matchWholeWord?, target? }` | `{ replacedCount, undoLabel, skipped?, skippedCount?, note? }` — project-wide find/replace, **ONE undo step** |
 | `is_referenced` | `{ objID? \| path? }` | `{ referenced: boolean }` — fast; short-circuits on first inbound reference |
 | `resolve_path` | `{ objID? \| path? }` | `{ objID, path, class, label }` — translate objID↔EEZ string path + report class/label |
 
@@ -395,7 +405,10 @@ present and round-trips through `resolve_path`.
   single Ctrl+Z. With `replacement` set, the engine filters out read-only/hidden props automatically
   (matching the UI's replace scope). Optional `target` narrows scope (property-name filter or a subtree
   root); omitted → whole project. This is NOT `replaceObjectReference` (that is for single-object
-  renames) — it is free-text pattern replacement.
+  renames) — it is free-text pattern replacement. **Scope signal:** a match that `search_project` finds
+  but that `canReplace()` cannot write (e.g. a build-file `template` body) is reported in `skipped`
+  (`[{ objID?, path, propertyName, label }]`, capped at 200) with a human-readable `note` — for build-file
+  templates the note points to `set_build_file_template` / `patch_build_file_template` (see below).
 - `resolve_path`: both directions. objID→object via `_objectsMap`; path→object via
   `getObjectFromStringPath`. `class` is the registered constructor name (e.g. `"Page"`,
   `"LVGLLabelWidget"`, `"Style"`, `"Color"`); `label` is the classInfo label / name. `objID` may be
@@ -735,6 +748,31 @@ None of these are undo/project mutations: `build_assets` is in-memory compute (t
   step, does not mark the project modified**. The raw setter accepts any string, so the bridge validates `name`
   against `configurations[].name` and throws **`NOT_FOUND`** for an unknown name (rather than silently falling back
   to `configurations[0]`). A subsequent `build_assets`/`build` consumes this selection. Synchronous.
+
+### Build-file code-generation templates (the two write tools ARE undo commands — ONE step each)
+The per-file codegen templates at `settings.build.files[N]` are the **source** the LVGL/codegen pipeline expands
+into the generated files (e.g. `ui.c`, `screens.c`). Editing the *generated* file is lost on the next rebuild —
+the template is the correct edit target. Each `BuildFile` is an `EezObject` with `{ fileName, template, objID }`;
+the write tools go through `store.updateObject(file, { template })`. Address a build file by `fileName` (unique),
+`index`, or `objID` (as returned by `list_build_files` / `search_project`).
+
+| Method | Params | Result |
+|---|---|---|
+| `list_build_files` | — | `{ files: [{ index, fileName, objID, templateLength }] }` — READ |
+| `get_build_file` | `{ fileName \| index \| objID }` | `{ index, fileName, objID, template }` — READ, full template text |
+| `set_build_file_template` | `{ fileName \| index \| objID, template }` | `{ index, fileName, objID, templateLength }` — replace the whole template (**ONE undo step**) |
+| `patch_build_file_template` | `{ fileName \| index \| objID, find, replacement, matchCase?, expectedCount? }` | `{ index, fileName, objID, replacedCount, changed }` — literal find/replace inside one template (**ONE undo step**) |
+
+- `list_build_files` / `get_build_file`: pure reads over `store.project.settings.build.files`. `templateLength` is a
+  size hint so you can skip fetching a large template you don't need.
+- `set_build_file_template`: `store.updateObject(file, { template })` — the whole template is replaced. One undo step.
+- `patch_build_file_template`: **literal** (non-regex) find/replace, **case-sensitive by default** (code is
+  case-sensitive; pass `matchCase:false` to fold case). `expectedCount`, if given, throws **`BAD_PARAMS`** unless
+  exactly that many occurrences are found (guards a blind edit); `0` matches ⇒ no write, `changed:false`. One undo step.
+- **Use these instead of `replace_in_project`** for generated-code customization (e.g. changing the global
+  screen-load animation `lv_scr_load_anim(screen, LV_SCR_LOAD_ANIM_FADE_IN, 200, 0, false)` → `…_NONE, 0`, adding an
+  include, tweaking the `loadScreen`/`ui_tick` boilerplate). EEZ's `canReplace()` excludes template bodies, so
+  `replace_in_project` cannot write them (it reports them in `skipped`).
 
 ### Full simulator (Docker) & export (NONE are undo commands; project-type / Docker gated)
 The F7 full simulator runs an Emscripten build inside **Docker Desktop** and serves it over a local loopback HTTP
