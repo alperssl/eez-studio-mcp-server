@@ -39,8 +39,11 @@ conventions — **not** EEZ Studio's rules (those live in the skill). It keeps e
      **source of truth** from now on, and they can edit it.
 3. **If it exists → read it and follow it.** Apply its palette / shapes / typography / patterns to every
    new or edited element. If the file and the live design disagree, prefer the file but flag the drift.
-4. **Keep it current.** When the user establishes a *new* pattern (a new accent, a new card style),
-   update `eez-design-rules.md` in the same change so the next run repeats it.
+4. **Update it on EVERY run — it is a living file.** At the end of any session where you added or
+   changed anything, reconcile the design back into `eez-design-rules.md`: fold in every new colour,
+   font, component pattern, spacing/naming convention, or rule you introduced or observed this run, and
+   correct anything that drifted. The file must always reflect the *current* design so each run builds on
+   the last. Keep it tight (merge, don't just append duplicates) and say what changed when you report.
 
 **Template** — write `eez-design-rules.md` in the project folder:
 ```md

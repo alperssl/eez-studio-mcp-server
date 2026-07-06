@@ -19,6 +19,12 @@ This repo packages two pieces that talk over a small, documented protocol:
 - a **bridge** (GPL-3, because it derives from EEZ Studio) that runs inside the
   EEZ Studio renderer and hosts a token-protected localhost WebSocket.
 
+It also ships an **`eez-editor` Claude agent + `eez-project-editor` skill** that drive all this:
+MCP-first editing (with an offline raw-JSON fallback), a **self-learning** loop that keeps its own
+guidance correct, and **per-project design rules** — the agent records each project's concept,
+palette, shapes, and conventions in an `eez-design-rules.md` and keeps it current every run, so edits
+stay on-brand across sessions.
+
 ---
 
 ## Architecture
@@ -69,7 +75,7 @@ The full wire protocol is in [`docs/PROTOCOL.md`](docs/PROTOCOL.md).
 │   ├── REGISTER.md         # register the MCP server with an agent client
 │   └── eez-studio-usage.md # how EEZ Studio works (agent-facing guide)
 ├── .claude/           # Claude Code assets shipped with the repo
-│   ├── agents/eez-editor.md              # the eez-editor agent (MCP-first, raw-JSON fallback)
+│   ├── agents/eez-editor.md              # eez-editor agent: MCP-first editing, self-learning, per-project design rules
 │   └── skills/eez-project-editor/        # exact .eez-project format + live-MCP workflow
 ├── .mcp.json.example  # sample MCP client registration (copy to .mcp.json)
 └── studio/            # OPTIONAL local clone of EEZ Studio — maintainers only,
