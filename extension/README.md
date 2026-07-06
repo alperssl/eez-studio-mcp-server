@@ -51,6 +51,9 @@ The extensions folder is OS-specific:
 
 ## Install (via the Extensions Manager)
 
+Download `eez-studio-mcp-bridge-<version>.zip` from the
+[Releases](https://github.com/alperssl/eez-studio-mcp-server/releases) page, or build it yourself:
+
 ```bash
 node extension/pack.mjs   # -> extension/dist/eez-studio-mcp-bridge-<version>.zip
 ```

@@ -86,7 +86,8 @@ The full wire protocol is in [`docs/PROTOCOL.md`](docs/PROTOCOL.md).
 
 ### Easy install (one step)
 
-Clone the repo, then run the installer — it builds + registers the MCP server, installs
+Clone the repo (or download a [release](https://github.com/alperssl/eez-studio-mcp-server/releases)
+and extract it), then run the installer — it builds + registers the MCP server, installs
 the EEZ Studio bridge extension, and copies the eez-editor agent + eez-project-editor skill
 into `~/.claude`:
 
