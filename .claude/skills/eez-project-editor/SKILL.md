@@ -48,6 +48,9 @@ with the true render.
   name-mapping tables). The deep catalog for value formats and (in fallback) raw JSON.
 - **[`rendering-rules.md`](rendering-rules.md)** — source-cited render-correctness rules (why a
   valid edit still renders wrong). Condensed in §6; read the file before authoring complex screens.
+- **[`LEARNINGS.md`](LEARNINGS.md)** — durable, source-verified corrections captured over time. When
+  you find this skill's guidance is wrong or missing a fact, fix it here and log it — see the
+  `eez-editor` agent's **Self-learning** protocol, and publish with `node tools/learn.mjs "<summary>"`.
 - **`docs/PROTOCOL.md`** (in the `eez-studio-mcp` repo) — the full wire contract for all 207 tools
   (exact params + result shapes). The authoritative source when you need a tool's precise signature.
 
