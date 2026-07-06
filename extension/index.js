@@ -71,9 +71,13 @@ function safeStatus() {
 function control(name) {
     try {
         const b = bridge();
-        if (name === "start") b.startMcpBridge();
+        // stopMcpBridge() persists { enabled: false }, and startMcpBridge() honors that
+        // flag (it doubles as the autostart entry point, so it MUST). That means a plain
+        // startMcpBridge() no-ops after a Stop. restartMcpBridge() re-enables and starts,
+        // so the panel's Start routes through it too (a stopped server makes its internal
+        // stop a no-op) — otherwise Start-after-Stop does nothing.
+        if (name === "start" || name === "restart") b.restartMcpBridge();
         else if (name === "stop") b.stopMcpBridge();
-        else if (name === "restart") b.restartMcpBridge();
     } catch (e) {
         /* swallowed — bridge logs its own errors */
     }
