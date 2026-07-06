@@ -300,7 +300,8 @@ From the official no-flow example (<https://github.com/eez-open/native-interface
 2. Drag an **Image** widget → set **Image = your bitmap name**.
 3. **Sizing caveat:** an Image draws at the bitmap's *native* pixel size (clipped to the box) unless
    you set **Zoom** (`256 = 1×`). Prefer pre-scaling the bitmap so the box equals native size at
-   `zoom:256`. For rotation, set the pivot to the image center (§6).
+   `zoom:256`. For rotation, just set **Angle** — the pivot is the **center** by default; leave
+   *Change pivot point* off (§6).
 
 ### 4.10 Define a shared (Project) style and reuse it
 1. Style one representative widget (local style) the way you want it.
@@ -366,8 +367,11 @@ int main(void) {
 2. **Images don't scale to the box.** An Image draws at native pixel size (clipped) unless you set
    `zoom` (256 = 1×) and size the box to match. Non-native `zoom` is *unreliable* in the preview —
    prefer pre-scaled bitmaps at `zoom:256`.
-3. **Rotated images pivot around (0,0) and fly off-box.** For any `angle ≠ 0`, set `setPivot: true` and
-   pivot X/Y to the image center.
+3. **Images rotate around their CENTER by default.** Just set `angle` (unit **0.1°**: `450` = 45°) and
+   leave `setPivot: false` (EEZ default — *"Change pivot point (default is center)"*). Enabling `setPivot`
+   and setting the pivot to the center is **redundant**; only set `setPivot:true` + `pivotX/pivotY` for a
+   **non-center** pivot. *(Raw-JSON only:* omitting `setPivot` makes the loader force it `true` with pivot
+   `0,0` → top-left fly-off, so always write `setPivot:false` explicitly there.)
 4. **Glyphs outside the font range render as `▯`.** Watch the Unicode MINUS `−` (U+2212) — use the
    ASCII hyphen `-` — plus arrows/symbols. Add missing glyphs to the font's Symbols.
 5. **Don't over-specify styles.** The theme sets shadow/padding; a flat, edge-tight card usually needs

@@ -68,12 +68,19 @@ The bitmap's true W×H lives in the generated LVGL image header (`.header.w` / `
 hand-edit workflow, read native size straight from the base64 PNG's IHDR (bytes 16–24).
 *(cite: lv_img_conv/lib/convert.ts:18–19, 353–354.)*
 
-### Rotation (bonus, same failure family)
-`angle` unit is **0.1°** (`450` = 45°, not raw degrees). For any `angle ≠ 0`, set
-`setPivot: true` and `pivotX/pivotY` to the image CENTER (`nativeW/2`, `nativeH/2`) —
-default pivot `(0,0)` rotates around the top-left and flings the image out of its box (you
-see a sliver in a corner). Note `setPivot` defaults to **true** in the beforeLoadHook, but
-set it explicitly. *(cite: Image.tsx:306–311 pivot, 397–403 angle, :191 setPivot default.)*
+### Rotation (bonus)
+`angle` unit is **0.1°** (`450` = 45°, not raw degrees). **To rotate around the image CENTER
+(the usual case) just set `angle` and leave `setPivot: false`** — that is the EEZ default (the
+field is literally labelled *"Change pivot point (default is center)"*), and with
+`setPivot:false` EEZ emits **no** `lv_img_set_pivot`, so LVGL rotates about the center.
+**Do NOT enable `setPivot` and set the pivot to the center — it is redundant.** Only set
+`setPivot: true` (+ `pivotX/pivotY`) when you want a **non-center** pivot.
+**Raw-JSON gotcha:** if you hand-write an Image object and OMIT `setPivot`, EEZ's
+beforeLoadHook forces `setPivot:true` while `pivotX/pivotY` stay `0,0` → rotation about the
+**top-left**, flinging the image out of its box (a sliver in the corner). So in raw JSON always
+write `setPivot: false` explicitly for centered rotation. *(cite: Image.tsx:75–76 label +
+pivotX/Y disabled unless setPivot, :168 default `false`, :306–311 pivot emitted only if
+setPivot, :397–403 angle, :190–191 hook forces true only when the field is undefined.)*
 
 ---
 
@@ -205,7 +212,8 @@ A character not covered by the font's `lvglRanges`/`lvglSymbols` renders as an e
 |---|---|---|
 | Show 480×101 bitmap at 340×72 | `zoom` + `width`/`height` | `zoom:181`, `width:340,height:72`, units `px` |
 | 1× (native) image | `zoom` | `256` |
-| Rotate image 90° about center (60×60) | `angle`,`setPivot`,`pivotX/Y` | `angle:900,setPivot:true,pivotX:30,pivotY:30` |
+| Rotate image 90° about center | `angle` (leave `setPivot:false`) | `angle:900` |
+| Rotate image about a NON-center pivot | `angle`,`setPivot`,`pivotX/Y` | `angle:900,setPivot:true,pivotX:10,pivotY:10` |
 | Label never clips vertically | `heightUnit` | `"content"` (or `height ≥ font.height`) |
 | Center text in label | `text_align` (MAIN/DEFAULT) | `"CENTER"` (leave `align` unset) |
 | Stop parent clipping a child | parent `widgetFlags` | add `OVERFLOW_VISIBLE` |

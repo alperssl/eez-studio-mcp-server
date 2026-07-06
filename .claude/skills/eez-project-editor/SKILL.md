@@ -457,9 +457,12 @@ widget `width`/`height` (units `px`) to the **scaled** size so the box contains 
 forgetting:** only the top-left corner shows ("cut-off logo"). Prefer **pre-scaled native-size
 bitmaps at `zoom:256`** — non-256 zoom is empirically unreliable in the preview.
 
-**C. Rotated images pivot around (0,0).** For any `angle` ≠ 0 (`angle` unit is 0.1°, so `900` = 90°)
-set `setPivot:true` and `pivotX`/`pivotY` to the image center (`nativeW/2`, `nativeH/2`), or the
-image flies out of its box. **Symptom:** a sliver in a corner.
+**C. Images rotate around their CENTER by default.** For any `angle` ≠ 0 (`angle` unit is 0.1°, so
+`900` = 90°), **just set `angle` and leave `setPivot:false`** — that is the EEZ default (labelled
+*"Change pivot point (default is center)"*), so LVGL rotates about the center. Enabling `setPivot` and
+setting the pivot to the center is **redundant**; only set `setPivot:true` + `pivotX`/`pivotY` for a
+**non-center** pivot. **Raw-JSON only:** if you OMIT `setPivot`, the loader forces it `true` with pivot
+`0,0` → rotation about the top-left (a sliver in a corner), so write `setPivot:false` explicitly there.
 
 **D. Glyphs outside the font range render as ▯.** A char not in the font's Ranges/Symbols is an
 empty box. Traps: Unicode MINUS `−` (U+2212) — use ASCII hyphen `-`; arrows `←↑→↓`; accented letters

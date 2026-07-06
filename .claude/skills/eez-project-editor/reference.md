@@ -158,8 +158,8 @@ Notes:
 | Field | Type | Default |
 |---|---|---|
 | `image` | string (ref → `bitmaps`) | — |
-| `setPivot` | boolean (hook forces `true` if undefined) | `false` |
-| `pivotX`,`pivotY` | number | `0`,`0` |
+| `setPivot` | boolean — `false` ⇒ rotate around **center** (default); `true` ⇒ use `pivotX/Y`. Raw-JSON: **omitting** it makes the loader force `true` @ pivot `0,0` (top-left) | `false` |
+| `pivotX`,`pivotY` | number (only used when `setPivot:true`) | `0`,`0` |
 | `zoom` | number (256 = 1x) | `256` |
 | `angle` | number | `0` |
 | `innerAlign` | enum `LV_IMAGE_ALIGN` (DEFAULT,TOP_LEFT…CENTER…TILE) | `"CENTER"` (v9 only) |
@@ -326,7 +326,7 @@ Dynamic label: `"textType": "expression", "text": "myVar", "previewValue": "123"
   "localStyles": {},
   "group": "", "groupIndex": 0,
   "image": "MyBitmap",
-  "setPivot": true, "pivotX": 0, "pivotY": 0,
+  "setPivot": false, "pivotX": 0, "pivotY": 0,
   "zoom": 256, "angle": 0,
   "innerAlign": "CENTER", "sizeMode": "VIRTUAL",
   "value": 0, "valueType": "literal", "previewValue": "0"
