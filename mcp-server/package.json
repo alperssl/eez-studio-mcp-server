@@ -1,6 +1,6 @@
 {
   "name": "eez-studio-mcp",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "MCP server that connects to the EEZ Studio bridge over a localhost WebSocket and exposes tools to inspect, edit, and render the currently-open .eez-project live.",
   "keywords": [
     "mcp",
