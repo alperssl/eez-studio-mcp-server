@@ -59,7 +59,7 @@ Install that `.zip` from **EEZ Studio → Extensions Manager**.
 
 ## Controls
 
-- **Floating MCP Bridge panel** (bottom-right corner) — start/stop/restart, set the port, copy the token.
+- **Floating MCP Bridge panel** (bottom-right corner) — start/stop/restart, set the port, copy the token. Click the pill to expand; click the **−** button or anywhere outside the panel to collapse it.
 - **Console:** `window.eezMcpBridge.{start,stop,restart,status,setPort}()`.
 - **Config file:** `%APPDATA%/eezstudio/eez-mcp-bridge-config.json` (port + enabled).
 - **Env:** `EEZ_MCP_BRIDGE=0` disables autostart; `EEZ_MCP_BRIDGE_PORT` overrides the port.

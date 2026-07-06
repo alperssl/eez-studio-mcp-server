@@ -303,9 +303,24 @@ function mountFloatingPanel() {
         setTimeout(render, 250);
     }
 
+    // Click anywhere outside the widget collapses it back to the pill. Capture phase so
+    // it fires before other handlers; the pill's own expand click is inside wrap, so it
+    // is ignored here.
+    const onDocPointerDown = (e) => {
+        if (expanded && !wrap.contains(e.target)) {
+            expanded = false;
+            render();
+        }
+    };
+    document.addEventListener("mousedown", onDocPointerDown, true);
+
     render();
     pollTimer = setInterval(render, 1500);
-    wrap.__cleanup = () => { if (pollTimer) clearInterval(pollTimer); pollTimer = null; };
+    wrap.__cleanup = () => {
+        if (pollTimer) clearInterval(pollTimer);
+        pollTimer = null;
+        document.removeEventListener("mousedown", onDocPointerDown, true);
+    };
 
     // Self-check for headless verification (captured by the bridge console ring buffer).
     try {
