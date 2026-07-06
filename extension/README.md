@@ -6,6 +6,10 @@ any other extension, requires no modification to the app, and survives app updat
 
 It ships the prebuilt bridge (`bridge/dist`) and its full **203 tools**.
 
+> **Tip:** to install the extension *and* register the MCP server *and* copy the agent/skill
+> in one step, run the repo's [`install.cmd`](../install.cmd) / [`install.sh`](../install.sh)
+> (see the root [README](../README.md#easy-install-one-step)). This doc covers the extension on its own.
+
 ## How it works
 
 EEZ Studio auto-loads every folder in its user-data `extensions/` directory at startup:

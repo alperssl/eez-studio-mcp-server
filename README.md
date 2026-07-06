@@ -60,6 +60,9 @@ The full wire protocol is in [`docs/PROTOCOL.md`](docs/PROTOCOL.md).
 │   ├── index.js       #   extension entry: starts the bridge + floating "MCP Bridge" panel
 │   ├── install.mjs    #   drop-in install into the user-data extensions/ folder
 │   └── pack.mjs       #   package as a .zip for the EEZ Studio Extensions Manager
+├── install.cmd        # one-double-click installer (Windows)
+├── install.sh         # one-command installer (macOS / Linux)
+├── installer/setup.mjs # does it all: build+register MCP, install extension, copy agent+skill
 ├── docs/
 │   ├── PROTOCOL.md         # authoritative bridge WebSocket protocol (v1)
 │   ├── REGISTER.md         # register the MCP server with an agent client
@@ -81,41 +84,52 @@ The full wire protocol is in [`docs/PROTOCOL.md`](docs/PROTOCOL.md).
 
 ## Quickstart
 
-### 1. Install the bridge (EEZ Studio extension)
+### Easy install (one step)
 
-Ship the bridge as a drop-in EEZ Studio extension (`pext`): no app modification,
-and it survives app updates. It adds a floating **MCP Bridge** panel in the
-bottom-right corner (start/stop/restart, port, token, live status). See
+Clone the repo, then run the installer — it builds + registers the MCP server, installs
+the EEZ Studio bridge extension, and copies the eez-editor agent + eez-project-editor skill
+into `~/.claude`:
+
+```bash
+# Windows: double-click install.cmd, or from a shell:
+install.cmd
+# macOS / Linux:
+./install.sh
+```
+
+Prerequisites: **Node 18+**, the **Claude Code CLI** (`claude`), and **EEZ Studio 0.28.x**.
+Then **restart EEZ Studio** (the bridge autostarts; a floating **MCP Bridge** panel appears
+bottom-right) and **restart Claude Code** so it picks up the `eez-studio` MCP server.
+
+- Dry-run first: `node installer/setup.mjs --dry-run`
+- Uninstall: `node installer/setup.mjs --uninstall`
+- Options: `--scope <local|user|project>` (default `user`), `--skip-mcp`, `--skip-agent`.
+
+### Manual install (alternative)
+
+**1. Install the bridge extension** — a drop-in `pext`, no app modification, survives updates.
+Adds a floating **MCP Bridge** panel bottom-right (start/stop/restart, port, token). See
 [`extension/README.md`](extension/README.md).
 
 ```bash
 node extension/install.mjs   # drop-in copy into the user-data extensions/ folder; restart EEZ Studio
+# or: node extension/pack.mjs   # build a .zip for the EEZ Studio Extensions Manager
 ```
 
-Or build a `.zip` for the EEZ Studio **Extensions Manager**, then install it from
-there and restart:
+The bridge binds `127.0.0.1`, is token-authenticated, and autostarts when EEZ Studio
+launches. Disable autostart with `EEZ_MCP_BRIDGE=0`; override the port/token with
+`EEZ_MCP_BRIDGE_PORT` / `EEZ_MCP_BRIDGE_TOKEN`; or set `enabled`/`port` persistently in
+`<userData>/eez-mcp-bridge-config.json` (`%APPDATA%/eezstudio/…` on Windows). You can also
+control it live from the `window.eezMcpBridge` DevTools console global.
 
-```bash
-node extension/pack.mjs      # build the installable .zip
-```
-
-The bridge binds `127.0.0.1`, is token-authenticated, and autostarts when EEZ
-Studio launches. Disable autostart with `EEZ_MCP_BRIDGE=0`; override the port and
-token with `EEZ_MCP_BRIDGE_PORT` / `EEZ_MCP_BRIDGE_TOKEN`; or set `enabled`/`port`
-persistently in `<userData>/eez-mcp-bridge-config.json`
-(`%APPDATA%/eezstudio/…` on Windows). You can also control it live from the
-`window.eezMcpBridge` DevTools console global.
-
-### 2. Build & register the MCP server
-
-Follow [`mcp-server/README.md`](mcp-server/README.md) / [`docs/REGISTER.md`](docs/REGISTER.md). In short:
+**2. Build & register the MCP server** — see [`mcp-server/README.md`](mcp-server/README.md) / [`docs/REGISTER.md`](docs/REGISTER.md):
 
 ```bash
 cd mcp-server && npm install && npm run build
-claude mcp add eez-studio -- node "$(pwd)/dist/index.js"
+claude mcp add --scope user eez-studio -- node "$(pwd)/dist/index.js"
 ```
 
-### 3. Verify
+### Verify
 
 With EEZ Studio (bridge running) and a project open:
 

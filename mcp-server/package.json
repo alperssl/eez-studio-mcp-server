@@ -36,6 +36,7 @@
   "devDependencies": {
     "@types/node": "^20",
     "@types/ws": "^8",
+    "tslib": "^2",
     "typescript": "^5"
   }
 }

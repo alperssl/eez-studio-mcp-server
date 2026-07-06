@@ -51,7 +51,10 @@ export function assembleInto(targetDir) {
     // ordinary deps do NOT resolve from an external extension folder — so we ship them.
     //   ws    — the WebSocket server (zero deps)
     //   tslib — TypeScript emit helpers (the bridge is compiled with importHelpers)
-    // Both are zero-dependency, so their folders alone suffice.
+    // Both are zero-dependency, so their folders alone suffice. They are sourced from
+    // the workspace's installed node_modules (see findDep): `ws` is an mcp-server runtime
+    // dependency and `tslib` is an mcp-server devDependency declared for this purpose, so
+    // `npm install` in mcp-server (which the installer runs first) makes both available.
     const bundled = [];
     for (const dep of RUNTIME_DEPS) {
         const src = findDep(dep);
