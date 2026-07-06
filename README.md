@@ -63,7 +63,7 @@ The full wire protocol is in [`docs/PROTOCOL.md`](docs/PROTOCOL.md).
 ├── install.cmd        # one-double-click installer (Windows)
 ├── install.sh         # one-command installer (macOS / Linux)
 ├── installer/setup.mjs # does it all: build+register MCP, install extension, copy agent+skill
-├── tools/learn.mjs    # eez-editor self-learning: sync a corrected agent/skill to ~/.claude + push
+├── tools/learn.mjs    # eez-editor self-learning: apply a learning to ~/.claude; --public pushes it
 ├── docs/
 │   ├── PROTOCOL.md         # authoritative bridge WebSocket protocol (v1)
 │   ├── REGISTER.md         # register the MCP server with an agent client

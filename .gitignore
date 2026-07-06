@@ -10,6 +10,9 @@
 /local/
 /fixtures-private/
 *.eez-project
+
+# Local, private working files — never published.
+/private/
 *.eez-project-ui-state
 *.eez-project.bak*
 
