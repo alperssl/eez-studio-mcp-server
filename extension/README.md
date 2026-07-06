@@ -1,0 +1,71 @@
+# EEZ Studio MCP Bridge — extension (no-patch install)
+
+This packages the bridge as an **EEZ Studio project extension** (`pext`), so you can add
+the MCP bridge to an **official EEZ Studio release without patching it** — it survives app
+updates and installs like any other extension.
+
+It's an alternative delivery to [`scripts/patch-release.mjs`](../scripts/patch-release.mjs):
+same bridge (`bridge/dist`), same 203 tools — just loaded the extension way.
+
+## How it works
+
+EEZ Studio auto-loads every folder in its user-data `extensions/` directory at startup:
+it does `require(folder).default` and calls the extension's `init()`. And because EEZ
+registers `build/` as a global Node module root (`app-module-path`, in
+`packages/main/fix-path.ts`), code running in the renderer can
+`require("project-editor/store")` / `require("home/tabs-store")` and reach the **same live
+singletons** the editor uses. That is exactly what the bridge needs — so `init()` simply
+starts the bridge, with **no modification to EEZ Studio**.
+
+The extension also contributes an **"MCP Bridge" panel to the Home tab** (start/stop/restart,
+port, auth token, config-file link, and live status).
+
+## Prerequisites
+
+Build the bridge once so `bridge/dist/*.js` exists (see [`bridge/README.md`](../bridge/README.md)).
+Requires an installed EEZ Studio **0.28.x**.
+
+## Install (drop-in)
+
+```bash
+node extension/install.mjs           # copies into the user-data extensions/ folder
+node extension/install.mjs --revert  # remove it
+```
+
+Then **restart EEZ Studio** (or open a `.eez-project`). The bridge starts automatically and
+the **MCP Bridge** panel appears on the Home tab. Register the MCP server as usual
+(see [`docs/REGISTER.md`](../docs/REGISTER.md)).
+
+The extensions folder is OS-specific:
+
+| OS | Path |
+|----|------|
+| Windows | `%APPDATA%\eezstudio\extensions\` |
+| macOS | `~/Library/Application Support/eezstudio/extensions/` |
+| Linux | `~/.config/eezstudio/extensions/` |
+
+## Install (via the Extensions Manager)
+
+```bash
+node extension/pack.mjs   # -> extension/dist/eez-studio-mcp-bridge-<version>.zip
+```
+
+Install that `.zip` from **EEZ Studio → Extensions Manager**.
+
+## Controls
+
+- **Home tab → MCP Bridge panel** — start/stop/restart, set the port, copy the token.
+- **Console:** `window.eezMcpBridge.{start,stop,restart,status,setPort}()`.
+- **Config file:** `%APPDATA%/eezstudio/eez-mcp-bridge-config.json` (port + enabled).
+- **Env:** `EEZ_MCP_BRIDGE=0` disables autostart; `EEZ_MCP_BRIDGE_PORT` overrides the port.
+
+## Extension vs. patch-release
+
+| | Extension | `patch-release.mjs` |
+|---|---|---|
+| Modifies the app binary | No | Yes (directory-mode, reversible) |
+| Survives app updates | Yes | Re-patch after update |
+| Adds a top **menu-bar** entry | No (Home-tab panel instead) | The from-source fork can |
+| Install | drop-in / Extensions Manager | one command against the install dir |
+
+Licensed **GPL-3.0-only** — the bridge loads EEZ Studio's GPL modules at runtime.

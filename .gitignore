@@ -17,6 +17,7 @@
 node_modules/
 /dist/
 /mcp-server/dist/
+/extension/dist/
 build/
 out/
 *.tsbuildinfo

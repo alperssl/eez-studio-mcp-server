@@ -56,6 +56,10 @@ The full wire protocol is in [`docs/PROTOCOL.md`](docs/PROTOCOL.md).
 │   ├── src/           #   bridge TypeScript modules (applied into an EEZ Studio source tree)
 │   ├── dist/          #   prebuilt bridge JS injected into a patched release binary
 │   └── README.md      #   how to build the from-source fork with the bridge
+├── extension/         # ship the bridge as a no-patch EEZ Studio extension (pext) — GPL-3
+│   ├── index.js       #   extension entry: starts the bridge + Home-tab "MCP Bridge" panel
+│   ├── install.mjs    #   drop-in install into the user-data extensions/ folder
+│   └── pack.mjs       #   package as a .zip for the EEZ Studio Extensions Manager
 ├── scripts/
 │   ├── apply-bridge.mjs    # apply/revert the bridge in an EEZ Studio source clone (dev path)
 │   └── patch-release.mjs   # inject the bridge into an official release install (exact-parity path)
@@ -95,6 +99,15 @@ node scripts/patch-release.mjs --app "<EEZ Studio install dir>"
 After patching, launching EEZ Studio — or **double-clicking a `.eez-project`** —
 starts the bridge automatically.
 
+**No-patch — install as an EEZ Studio extension.** Ships the same bridge as a
+drop-in project extension (`pext`): no app modification, and it survives app
+updates. Adds an **MCP Bridge** panel to the Home tab (start/stop, port, token).
+See [`extension/README.md`](extension/README.md).
+
+```bash
+node extension/install.mjs   # copy into the user-data extensions/ folder; restart EEZ Studio
+```
+
 **Dev — build the from-source fork.** Rebuilds EEZ Studio from source with the
 bridge; render-faithful but not byte-identical to the release. See
 [`bridge/README.md`](bridge/README.md).
@@ -106,7 +119,7 @@ cd studio && npm install && npm run build
 npm start -- "path/to/your.eez-project"
 ```
 
-Either way, the bridge binds `127.0.0.1`, is token-authenticated, and starts when
+In all cases, the bridge binds `127.0.0.1`, is token-authenticated, and starts when
 a project is open. Disable with `EEZ_MCP_BRIDGE=0`; configure the port in
 `<userData>/eez-mcp-bridge-config.json` (`%APPDATA%/eezstudio/…` on Windows).
 
