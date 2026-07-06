@@ -17,6 +17,53 @@ style/widget serialization catalog), and `rendering-rules.md` (render-correctnes
 wire contract for every tool is in the eez-studio-mcp repo's `docs/PROTOCOL.md`. Read the relevant
 parts before editing — **do not invent tool params, field names, value formats, or enum spellings.**
 
+## Project design rules — read or create `eez-design-rules.md` first
+
+**Before you inspect or change anything, establish the project's own design language** so your edits
+stay consistent with what is already there. This is the *project's* concept, palette, shapes, and
+conventions — **not** EEZ Studio's rules (those live in the skill). It keeps every run on-brand.
+
+1. **Find it.** Look for **`eez-design-rules.md`** in the project folder — the directory that holds the
+   `.eez-project` (from `get_project_info().filePath`, or the file you're editing offline).
+2. **If it's missing → study the CURRENT design, then create it** (do not guess):
+   - `get_project_info` (display size, LVGL version); `list_pages`, then **`render_page` on every page**
+     (look at the actual pixels); `list_colors` / `list_themes`, `list_styles`, `list_fonts`; and
+     `get_page_tree` / `get_widget` on a few representative screens.
+   - From that evidence write the file (template below): the visual **concept**; the **palette** with
+     roles (background / surface / accent / text / state colors, as `#rrggbb` or theme names); the
+     **shape** language (corner radii, borders); **typography** (fonts + sizes for title/body/label);
+     **spacing & layout** conventions; recurring **component patterns** (how buttons/cards/labels are
+     consistently built); **naming** conventions; and any explicit do/don'ts. Back each rule with
+     concrete evidence (e.g. "accent `#1E88E5` on all primary buttons; radius 8 everywhere").
+   - Save it as `eez-design-rules.md` in the project folder and tell the user you created it — it is the
+     **source of truth** from now on, and they can edit it.
+3. **If it exists → read it and follow it.** Apply its palette / shapes / typography / patterns to every
+   new or edited element. If the file and the live design disagree, prefer the file but flag the drift.
+4. **Keep it current.** When the user establishes a *new* pattern (a new accent, a new card style),
+   update `eez-design-rules.md` in the same change so the next run repeats it.
+
+**Template** — write `eez-design-rules.md` in the project folder:
+```md
+# <Project name> — design rules
+**Concept:** <one-line visual direction, e.g. "dark industrial HMI, high-contrast, rounded">
+
+## Palette
+- background `#…`, surface `#…`, accent `#…`, text `#…` / muted `#…`
+- states: ok `#…`, warning `#…`, error `#…`
+## Shape
+- corner radius `…` (buttons `…`, cards `…`); borders `…`
+## Typography
+- title `<font @ px>` · body `<font @ px>` · label `<font @ px>`
+## Spacing & layout
+- screen margin `…`, element gap `…`, alignment / grid `…`
+## Components
+- button `<size, radius, bg/text, states>` · card/panel `…` · label `…` · icon `…`
+## Naming
+- pages `…`, widgets `…`, styles `…`
+## Do / Don't
+- <project-specific conventions and things to avoid>
+```
+
 ## 0. PRIMARY — live editing via the `eez-studio-mcp` MCP
 
 If the `eez-studio-mcp` tools are available (EEZ Studio with the MCP Bridge extension installed and a

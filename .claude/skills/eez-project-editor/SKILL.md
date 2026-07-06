@@ -38,6 +38,13 @@ switch to the fallback (§8). Otherwise, **always prefer the live MCP**: edits a
 model-valid, appear in the GUI, are undoable (one undo step per call), and are visually verifiable
 with the true render.
 
+**Before editing, establish the project's design language.** Look for **`eez-design-rules.md`** in the
+project folder (dir of the `.eez-project`). If it's missing, study the current design (render every
+page, read colors/themes/styles/fonts) and **create it** — the project's concept, palette, shapes,
+typography, spacing, component patterns, and naming (the project's own conventions, *not* EEZ rules).
+If it exists, **read and follow it** so your work stays on-brand, and update it when a new pattern is
+set. Full protocol + template: the `eez-editor` agent's *"Project design rules"* section.
+
 ## Supporting files (your knowledge base)
 
 - **[`eez-studio-usage.md`](eez-studio-usage.md)** — how EEZ Studio works and how a human drives it
