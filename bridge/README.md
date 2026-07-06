@@ -147,8 +147,9 @@ config). Otherwise leave them unset and rely on the handshake file.
 
 ### Runtime control (start / stop / port)
 
-The extension adds an **"MCP Bridge" panel** on the EEZ Studio **Home tab**
-(Start / Stop / Restart, port, token, and live status). You can also control it via:
+The extension injects a floating **"MCP Bridge" panel** into the bottom-right corner
+of the EEZ Studio window — a status pill that expands to Start / Stop / Restart, port,
+token, and live status. You can also control it via:
 
 - the **config file** `<userData>/eez-mcp-bridge-config.json` = `{ "enabled": bool, "port": number }`
   (`%APPDATA%/eezstudio/…` on Windows) — edit and restart;

@@ -7,8 +7,8 @@
 //   node extension/install.mjs --revert   # remove it
 //   node extension/install.mjs --dir <extensionsFolder>   # custom extensions dir
 //
-// After installing, RESTART EEZ Studio (or open a project) — the bridge starts and an
-// "MCP Bridge" panel appears on the Home tab.
+// After installing, RESTART EEZ Studio (or open a project) — the bridge starts and a
+// floating "MCP Bridge" panel appears in the bottom-right corner.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -56,5 +56,5 @@ console.log(`  location : ${res.targetDir}`);
 console.log(`  bridge   : ${res.bridgeModules} modules`);
 console.log("");
 console.log("Next: restart EEZ Studio (or open a .eez-project). The bridge starts");
-console.log("automatically, and an 'MCP Bridge' panel appears on the Home tab.");
+console.log("automatically, and a floating 'MCP Bridge' panel appears in the bottom-right corner.");
 console.log("Disable at startup with EEZ_MCP_BRIDGE=0; revert with --revert.");

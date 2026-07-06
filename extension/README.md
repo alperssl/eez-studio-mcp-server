@@ -16,8 +16,10 @@ registers `build/` as a global Node module root (`app-module-path`, in
 singletons** the editor uses. That is exactly what the bridge needs — so `init()` simply
 starts the bridge, with **no modification to EEZ Studio**.
 
-The extension also contributes an **"MCP Bridge" panel to the Home tab** (start/stop/restart,
-port, auth token, config-file link, and live status).
+The extension also injects a floating **"MCP Bridge" panel** into the bottom-right corner of
+the EEZ Studio window — a compact status pill that expands to start/stop/restart, port, auth
+token, config-file link, and live status. (It renders itself into the renderer DOM because EEZ
+Studio 0.28.0 ships the extension "home section" UI slot disabled.)
 
 ## Prerequisites
 
@@ -32,7 +34,7 @@ node extension/install.mjs --revert  # remove it
 ```
 
 Then **restart EEZ Studio** (or open a `.eez-project`). The bridge starts automatically and
-the **MCP Bridge** panel appears on the Home tab. Register the MCP server as usual
+the floating **MCP Bridge** panel appears in the bottom-right corner. Register the MCP server as usual
 (see [`docs/REGISTER.md`](../docs/REGISTER.md)).
 
 The extensions folder is OS-specific:
@@ -53,7 +55,7 @@ Install that `.zip` from **EEZ Studio → Extensions Manager**.
 
 ## Controls
 
-- **Home tab → MCP Bridge panel** — start/stop/restart, set the port, copy the token.
+- **Floating MCP Bridge panel** (bottom-right corner) — start/stop/restart, set the port, copy the token.
 - **Console:** `window.eezMcpBridge.{start,stop,restart,status,setPort}()`.
 - **Config file:** `%APPDATA%/eezstudio/eez-mcp-bridge-config.json` (port + enabled).
 - **Env:** `EEZ_MCP_BRIDGE=0` disables autostart; `EEZ_MCP_BRIDGE_PORT` overrides the port.

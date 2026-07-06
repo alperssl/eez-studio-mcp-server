@@ -57,7 +57,7 @@ The full wire protocol is in [`docs/PROTOCOL.md`](docs/PROTOCOL.md).
 │   ├── dist/          #   prebuilt bridge JS bundled by the extension
 │   └── README.md      #   how maintainers rebuild dist/ from src/
 ├── extension/         # ship the bridge as a drop-in EEZ Studio extension (pext) — GPL-3
-│   ├── index.js       #   extension entry: starts the bridge + Home-tab "MCP Bridge" panel
+│   ├── index.js       #   extension entry: starts the bridge + floating "MCP Bridge" panel
 │   ├── install.mjs    #   drop-in install into the user-data extensions/ folder
 │   └── pack.mjs       #   package as a .zip for the EEZ Studio Extensions Manager
 ├── docs/
@@ -84,8 +84,8 @@ The full wire protocol is in [`docs/PROTOCOL.md`](docs/PROTOCOL.md).
 ### 1. Install the bridge (EEZ Studio extension)
 
 Ship the bridge as a drop-in EEZ Studio extension (`pext`): no app modification,
-and it survives app updates. It adds an **MCP Bridge** panel to the Home tab
-(start/stop/restart, port, token, live status). See
+and it survives app updates. It adds a floating **MCP Bridge** panel in the
+bottom-right corner (start/stop/restart, port, token, live status). See
 [`extension/README.md`](extension/README.md).
 
 ```bash
@@ -427,7 +427,7 @@ you **redistribute** the bridge (for example, inside a packaged extension `.zip`
 - **Drop-in extension install** via `node extension/install.mjs` (or a packed `.zip`
   from `node extension/pack.mjs`) — no app modification; the bridge autostarts when
   EEZ Studio launches and survives app updates.
-- Runtime control from the Home-tab **MCP Bridge** panel (start/stop/restart, port,
+- Runtime control from the floating **MCP Bridge** panel (start/stop/restart, port,
   token, live status) and the `window.eezMcpBridge` DevTools console global.
 - Diagnostics across all three surfaces: static checks, runtime preview console, and EEZ
   toast notifications (e.g. surfaces `Font "…" extraction failed`).

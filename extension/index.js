@@ -7,6 +7,11 @@
 // and reach the SAME live singletons the editor uses. That is all the bridge needs —
 // so this ships as a drop-in extension with NO app patching.
 //
+// UI: EEZ Studio 0.28.0 ships the extension "home section" slot commented out, so a
+// registered home-section panel never renders. Instead, init() injects a small floating
+// "MCP Bridge" panel straight into the renderer DOM (still 100% inside the extension — no
+// app modification): a collapsed status pill that expands to start/stop/port/token controls.
+//
 // The bundled bridge lives in ./mcp-bridge/ (assembled from bridge/dist by install.mjs /
 // pack.mjs, with its intra-bundle `mcp-bridge/*` requires rewritten to relative paths).
 
@@ -63,163 +68,269 @@ function safeStatus() {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Home-tab "MCP Bridge" settings + status panel (plain React, no JSX build).
-// ---------------------------------------------------------------------------
-function McpBridgePanel() {
-    const React = require("react");
-    const h = React.createElement;
+function control(name) {
+    try {
+        const b = bridge();
+        if (name === "start") b.startMcpBridge();
+        else if (name === "stop") b.stopMcpBridge();
+        else if (name === "restart") b.restartMcpBridge();
+    } catch (e) {
+        /* swallowed — bridge logs its own errors */
+    }
+}
 
-    const [status, setStatus] = React.useState(safeStatus);
-    const [port, setPort] = React.useState(function () {
-        const s = safeStatus();
-        return s.port || 38017;
+// ---------------------------------------------------------------------------
+// Floating "MCP Bridge" panel — plain DOM injected into the renderer.
+// No react-dom dependency, so it is robust across EEZ Studio versions.
+// ---------------------------------------------------------------------------
+const WIDGET_ID = "eez-mcp-bridge-widget";
+let pollTimer = null;
+
+function el(tag, style, text) {
+    const e = document.createElement(tag);
+    if (style) Object.assign(e.style, style);
+    if (text != null) e.textContent = text;
+    return e;
+}
+
+function mountFloatingPanel() {
+    if (!isRenderer() || typeof document === "undefined") return;
+    // Body may not exist yet at extension-load time — wait for it.
+    if (!document.body) {
+        window.addEventListener("DOMContentLoaded", mountFloatingPanel, { once: true });
+        return;
+    }
+    if (document.getElementById(WIDGET_ID)) return; // already mounted in this document
+
+    let expanded = false;
+
+    const wrap = el("div", {
+        position: "fixed",
+        right: "14px",
+        bottom: "14px",
+        zIndex: "2147483000",
+        fontFamily: "system-ui, -apple-system, Segoe UI, sans-serif",
+        fontSize: "12px",
+        color: "#e8e8e8",
+        userSelect: "none"
     });
-    const [copied, setCopied] = React.useState("");
+    wrap.id = WIDGET_ID;
 
-    const refresh = React.useCallback(function () {
-        setStatus(safeStatus());
-    }, []);
+    // --- collapsed pill ---
+    const pill = el("div", {
+        display: "flex",
+        alignItems: "center",
+        gap: "7px",
+        padding: "6px 11px",
+        background: "rgba(28,28,30,0.92)",
+        border: "1px solid rgba(255,255,255,0.14)",
+        borderRadius: "999px",
+        boxShadow: "0 4px 14px rgba(0,0,0,0.35)",
+        cursor: "pointer",
+        backdropFilter: "blur(6px)"
+    });
+    const pillDot = el("span", dotStyle(false));
+    const pillText = el("span", { fontWeight: "600", letterSpacing: "0.3px" }, "MCP");
+    pill.appendChild(pillDot);
+    pill.appendChild(pillText);
+    pill.title = "MCP Bridge — click to open";
+    pill.onclick = () => { expanded = true; render(); };
 
-    React.useEffect(function () {
-        const t = setInterval(refresh, 1500);
-        return function () {
-            clearInterval(t);
+    // --- expanded card ---
+    const card = el("div", {
+        width: "252px",
+        padding: "12px 13px 11px",
+        background: "rgba(28,28,30,0.94)",
+        border: "1px solid rgba(255,255,255,0.14)",
+        borderRadius: "10px",
+        boxShadow: "0 8px 26px rgba(0,0,0,0.45)",
+        backdropFilter: "blur(8px)"
+    });
+
+    wrap.appendChild(pill);
+    wrap.appendChild(card);
+    document.body.appendChild(wrap);
+
+    function btn(label, kind) {
+        const b = el("button", {
+            flex: "1",
+            padding: "5px 0",
+            fontSize: "12px",
+            color: kind === "primary" ? "#fff" : "#e8e8e8",
+            background: kind === "primary" ? "#2f7bd6" : "rgba(255,255,255,0.08)",
+            border: "1px solid rgba(255,255,255,0.16)",
+            borderRadius: "6px",
+            cursor: "pointer"
+        }, label);
+        return b;
+    }
+
+    function labeledRow(labelText) {
+        const row = el("div", {
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            margin: "7px 0"
+        });
+        row.appendChild(el("span", { opacity: "0.6", minWidth: "44px" }, labelText));
+        return row;
+    }
+
+    function render() {
+        const s = safeStatus();
+        const running = !!s.running;
+
+        // pill reflects state even while collapsed
+        Object.assign(pillDot.style, dotStyle(running));
+        pillText.textContent = running && s.port ? "MCP " + s.port : "MCP";
+        pill.style.display = expanded ? "none" : "flex";
+        card.style.display = expanded ? "block" : "none";
+        if (!expanded) return;
+
+        card.textContent = "";
+
+        // header
+        const header = el("div", { display: "flex", alignItems: "center", gap: "8px", marginBottom: "2px" });
+        header.appendChild(el("span", dotStyle(running)));
+        header.appendChild(el("span", { fontWeight: "700", fontSize: "13px" }, "MCP Bridge"));
+        const spacer = el("span", { flex: "1" });
+        header.appendChild(spacer);
+        const collapse = el("span", {
+            cursor: "pointer", opacity: "0.6", padding: "0 4px", fontSize: "16px", lineHeight: "1"
+        }, "–");
+        collapse.title = "Collapse";
+        collapse.onclick = () => { expanded = false; render(); };
+        header.appendChild(collapse);
+        card.appendChild(header);
+
+        // status line
+        card.appendChild(el("div", { opacity: "0.85", margin: "6px 0 9px" },
+            running ? "Running · 127.0.0.1:" + s.port : "Stopped"));
+
+        // start / stop / restart
+        const btnRow = el("div", { display: "flex", gap: "6px", marginBottom: "3px" });
+        const startB = btn("Start", running ? "" : "primary");
+        startB.disabled = running;
+        if (running) startB.style.opacity = "0.5";
+        startB.onclick = () => act(() => control("start"));
+        const stopB = btn("Stop");
+        stopB.disabled = !running;
+        if (!running) stopB.style.opacity = "0.5";
+        stopB.onclick = () => act(() => control("stop"));
+        const restartB = btn("Restart");
+        restartB.onclick = () => act(() => control("restart"));
+        btnRow.appendChild(startB);
+        btnRow.appendChild(stopB);
+        btnRow.appendChild(restartB);
+        card.appendChild(btnRow);
+
+        // port
+        const portRow = labeledRow("Port");
+        const portInput = el("input", {
+            width: "72px",
+            padding: "3px 6px",
+            fontFamily: "monospace",
+            fontSize: "12px",
+            color: "#e8e8e8",
+            background: "rgba(255,255,255,0.06)",
+            border: "1px solid rgba(255,255,255,0.16)",
+            borderRadius: "5px"
+        });
+        portInput.type = "number";
+        portInput.value = String(s.port || 38017);
+        const applyB = btn("Apply", "");
+        applyB.style.flex = "0 0 auto";
+        applyB.style.padding = "3px 10px";
+        applyB.onclick = () => {
+            const p = parseInt(portInput.value, 10);
+            try {
+                if (!isNaN(p) && p > 0 && window.eezMcpBridge && window.eezMcpBridge.setPort) {
+                    window.eezMcpBridge.setPort(p);
+                }
+            } catch (e) {}
+            act(() => {});
         };
-    }, [refresh]);
+        portRow.appendChild(portInput);
+        portRow.appendChild(applyB);
+        card.appendChild(portRow);
 
-    const control = function (name) {
-        try {
-            const b = bridge();
-            if (name === "start") b.startMcpBridge();
-            else if (name === "stop") b.stopMcpBridge();
-            else if (name === "restart") b.restartMcpBridge();
-        } catch (e) {
-            /* swallowed — bridge logs its own errors */
+        // token
+        const tokRow = labeledRow("Token");
+        if (s.token) {
+            tokRow.appendChild(el("code", {
+                fontFamily: "monospace", flex: "1",
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"
+            }, String(s.token).slice(0, 12) + "…"));
+            const copyB = btn("Copy", "");
+            copyB.style.flex = "0 0 auto";
+            copyB.style.padding = "3px 10px";
+            copyB.onclick = () => {
+                try { require("electron").clipboard.writeText(String(s.token)); } catch (e) {}
+                copyB.textContent = "Copied ✓";
+                setTimeout(() => { copyB.textContent = "Copy"; }, 1100);
+            };
+            tokRow.appendChild(copyB);
+        } else {
+            tokRow.appendChild(el("span", { opacity: "0.5" }, "—"));
         }
-        setTimeout(refresh, 250);
-    };
+        card.appendChild(tokRow);
 
-    const applyPort = function () {
-        try {
-            const p = parseInt(port, 10);
-            if (!isNaN(p) && p > 0 && window.eezMcpBridge && window.eezMcpBridge.setPort) {
-                window.eezMcpBridge.setPort(p);
-            }
-        } catch (e) {}
-        setTimeout(refresh, 300);
-    };
+        // config file link
+        if (s.configFile) {
+            const cfgRow = labeledRow("Config");
+            const link = el("span", {
+                color: "#5aa9ff", cursor: "pointer", textDecoration: "underline",
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: "1"
+            }, "eez-mcp-bridge-config.json");
+            link.title = s.configFile;
+            link.onclick = () => { try { require("electron").shell.openPath(s.configFile); } catch (e) {} };
+            cfgRow.appendChild(link);
+            card.appendChild(cfgRow);
+        }
 
-    const copy = function (label, value) {
-        try {
-            require("electron").clipboard.writeText(String(value || ""));
-            setCopied(label);
-            setTimeout(function () {
-                setCopied("");
-            }, 1200);
-        } catch (e) {}
-    };
+        // footer note
+        card.appendChild(el("div", { marginTop: "9px", fontSize: "11px", opacity: "0.55", lineHeight: "1.4" },
+            "eez-studio-mcp auto-discovers this bridge via the handshake file. Disable autostart with EEZ_MCP_BRIDGE=0."));
+    }
 
-    const openConfig = function () {
-        try {
-            if (status.configFile) require("electron").shell.openPath(status.configFile);
-        } catch (e) {}
-    };
+    // run an action, then re-render shortly after so state settles
+    function act(fn) {
+        try { fn(); } catch (e) {}
+        setTimeout(render, 250);
+    }
 
-    const running = !!status.running;
+    render();
+    pollTimer = setInterval(render, 1500);
+    wrap.__cleanup = () => { if (pollTimer) clearInterval(pollTimer); pollTimer = null; };
 
-    // --- styles (inline; no external CSS dependency) ---
-    const box = { padding: "12px 16px", maxWidth: 640, fontSize: 13, lineHeight: 1.5 };
-    const row = { display: "flex", alignItems: "center", gap: 10, margin: "8px 0", flexWrap: "wrap" };
-    const dot = {
-        width: 10,
-        height: 10,
+    // Self-check for headless verification (captured by the bridge console ring buffer).
+    try {
+        // eslint-disable-next-line no-console
+        console.log("[eez-studio-mcp-bridge] floating panel mounted:", document.body.contains(wrap));
+    } catch (e) {}
+}
+
+function unmountFloatingPanel() {
+    try {
+        if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+        const existing = typeof document !== "undefined" && document.getElementById(WIDGET_ID);
+        if (existing) {
+            if (typeof existing.__cleanup === "function") existing.__cleanup();
+            existing.remove();
+        }
+    } catch (e) {}
+}
+
+function dotStyle(running) {
+    return {
+        display: "inline-block",
+        width: "9px",
+        height: "9px",
         borderRadius: "50%",
-        background: running ? "#2e7d32" : "#9e9e9e",
-        boxShadow: running ? "0 0 6px #2e7d32" : "none",
+        background: running ? "#37c46a" : "#8a8a8a",
+        boxShadow: running ? "0 0 6px #37c46a" : "none",
         flex: "0 0 auto"
     };
-    const mono = { fontFamily: "monospace", background: "rgba(127,127,127,.15)", padding: "1px 6px", borderRadius: 4 };
-    const btn = function (primary) {
-        return {
-            padding: "4px 12px",
-            borderRadius: 5,
-            border: "1px solid rgba(127,127,127,.4)",
-            background: primary ? "#1e88e5" : "transparent",
-            color: primary ? "#fff" : "inherit",
-            cursor: "pointer",
-            fontSize: 13
-        };
-    };
-    const label = { opacity: 0.7, minWidth: 84, display: "inline-block" };
-    const link = { color: "#1e88e5", cursor: "pointer", textDecoration: "underline", wordBreak: "break-all" };
-
-    return h(
-        "div",
-        { style: box },
-        h(
-            "div",
-            { style: Object.assign({}, row, { fontSize: 15, fontWeight: 600 }) },
-            h("span", { style: dot }),
-            h("span", null, running ? "Running" : "Stopped"),
-            running && status.port
-                ? h("span", { style: mono }, "127.0.0.1:" + status.port)
-                : null
-        ),
-        h(
-            "div",
-            { style: row },
-            h("button", { style: btn(!running), onClick: function () { control("start"); } }, "Start"),
-            h("button", { style: btn(false), onClick: function () { control("stop"); }, disabled: !running }, "Stop"),
-            h("button", { style: btn(false), onClick: function () { control("restart"); } }, "Restart"),
-            h("button", { style: btn(false), onClick: refresh }, "Refresh")
-        ),
-        h(
-            "div",
-            { style: row },
-            h("span", { style: label }, "Port"),
-            h("input", {
-                type: "number",
-                value: port,
-                onChange: function (e) { setPort(e.target.value); },
-                style: Object.assign({}, mono, { width: 96, fontFamily: "monospace" })
-            }),
-            h("button", { style: btn(false), onClick: applyPort }, "Apply & restart")
-        ),
-        h(
-            "div",
-            { style: row },
-            h("span", { style: label }, "Token"),
-            status.token
-                ? h("code", { style: mono }, String(status.token).slice(0, 12) + "…")
-                : h("span", { style: { opacity: 0.6 } }, "—"),
-            status.token
-                ? h("button", { style: btn(false), onClick: function () { copy("token", status.token); } },
-                    copied === "token" ? "Copied ✓" : "Copy")
-                : null
-        ),
-        status.configFile
-            ? h(
-                  "div",
-                  { style: row },
-                  h("span", { style: label }, "Config"),
-                  h("span", { style: link, onClick: openConfig }, status.configFile)
-              )
-            : null,
-        status.handshakeFile
-            ? h(
-                  "div",
-                  { style: Object.assign({}, row, { fontSize: 12, opacity: 0.7 }) },
-                  h("span", { style: label }, "Handshake"),
-                  h("code", { style: mono }, status.handshakeFile)
-              )
-            : null,
-        h(
-            "div",
-            { style: { marginTop: 12, fontSize: 12, opacity: 0.75 } },
-            "The eez-studio-mcp server auto-discovers this bridge via the handshake file and connects over the token-authenticated localhost WebSocket. Disable at startup with EEZ_MCP_BRIDGE=0."
-        )
-    );
 }
 
 // ---------------------------------------------------------------------------
@@ -237,26 +348,21 @@ const extension = {
                 console.error("[eez-studio-mcp-bridge] init failed:", e);
             } catch (e2) {}
         }
+        try {
+            mountFloatingPanel();
+        } catch (e) {
+            try {
+                console.error("[eez-studio-mcp-bridge] panel mount failed:", e);
+            } catch (e2) {}
+        }
     },
 
     destroy: function () {
+        unmountFloatingPanel();
         try {
             bridge().stopMcpBridge();
         } catch (e) {}
-    },
-
-    homeSections: [
-        {
-            id: "eez-studio-mcp-bridge",
-            title: "MCP Bridge",
-            icon: "material:developer_board",
-            category: "common",
-            renderContent: function () {
-                const React = require("react");
-                return React.createElement(McpBridgePanel);
-            }
-        }
-    ]
+    }
 };
 
 module.exports.default = extension;
