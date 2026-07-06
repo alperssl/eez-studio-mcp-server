@@ -22,7 +22,7 @@ build/
 out/
 *.tsbuildinfo
 coverage/
-# NOTE: bridge/dist/ is intentionally tracked — the release patcher injects it.
+# NOTE: bridge/dist/ is intentionally tracked — the extension bundles it.
 
 # Env & secrets
 .env

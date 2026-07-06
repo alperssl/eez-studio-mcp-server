@@ -2,13 +2,13 @@
 
 An [MCP](https://modelcontextprotocol.io) server that lets an AI agent inspect, author, render, and run the **currently-open `.eez-project`** in a running EEZ Studio, live — the full editor surface (pages, widgets, styles, assets, variables, i18n, the visual flow graph, and the LVGL-WASM simulator) across **flow and no-flow** LVGL projects.
 
-It is a small standalone Node process that connects to a WebSocket **bridge** hosted inside EEZ Studio (Electron) — either a from-source fork or a patched release binary — and exposes the bridge protocol as MCP tools over **stdio**. Edits go through EEZ Studio's own `ProjectStore`, so the GUI, undo/redo, validation, and code generation stay consistent — each tool call is one undo step.
+It is a small standalone Node process that connects to a WebSocket **bridge** hosted inside EEZ Studio (Electron) by the **MCP Bridge extension**, and exposes the bridge protocol as MCP tools over **stdio**. Edits go through EEZ Studio's own `ProjectStore`, so the GUI, undo/redo, validation, and code generation stay consistent — each tool call is one undo step.
 
 ```
 agent/client  ⇄ (stdio, MCP)  ⇄  eez-studio-mcp  ⇄ (localhost WebSocket)  ⇄  EEZ Studio bridge  ⇄  ProjectStore + LVGL-WASM preview
 ```
 
-> **Requires EEZ Studio with the MCP bridge running** — a from-source fork or a patched release (see the repo [README](../README.md) / [`docs/PATCH-RELEASE.md`](../docs/PATCH-RELEASE.md)). This server discovers the bridge automatically; if it is not running, every tool returns a clear "launch it first" error.
+> **Requires EEZ Studio with the MCP Bridge extension** installed and a project open (see the repo [`../README.md`](../README.md) and [`../extension/README.md`](../extension/README.md)). This server discovers the bridge automatically; if it is not running, every tool returns a clear "launch it first" error.
 
 ## What you can do
 

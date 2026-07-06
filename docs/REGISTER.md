@@ -8,15 +8,15 @@ Two pieces, two places:
 
 | Piece | Lives in | Configured how |
 |---|---|---|
-| **Bridge** | EEZ Studio with the bridge — a **patched release** (recommended, `scripts/patch-release.mjs`) or a **from-source fork** (`scripts/apply-bridge.mjs`) | Nothing to register — it auto-starts when a project is open, binds `127.0.0.1`, and writes a handshake file. Config: `<userData>/eez-mcp-bridge-config.json` = `{ enabled, port }`; env `EEZ_MCP_BRIDGE_PORT` / `EEZ_MCP_BRIDGE_TOKEN` / `EEZ_MCP_BRIDGE=0`. |
+| **Bridge** | EEZ Studio with the bridge — install the **MCP Bridge extension** (`node extension/install.mjs`; see [`../extension/README.md`](../extension/README.md)) | Nothing to register — it auto-starts when a project is open, binds `127.0.0.1`, and writes a handshake file. Config: `<userData>/eez-mcp-bridge-config.json` = `{ enabled, port }`; env `EEZ_MCP_BRIDGE_PORT` / `EEZ_MCP_BRIDGE_TOKEN` / `EEZ_MCP_BRIDGE=0`. |
 | **MCP server** | this repo (`mcp-server/`) | Registered with your agent client (below). Auto-discovers the bridge via the handshake file — no port/token needed normally. |
 
 ## Prerequisites
 
-1. EEZ Studio **with the bridge** is running with a project open. Set it up either way:
-   - **Recommended (exact parity):** patch the official release — [`PATCH-RELEASE.md`](PATCH-RELEASE.md).
-     After patching, launching EEZ Studio (or double-clicking a `.eez-project`) starts the bridge.
-   - **Dev:** build the from-source fork — [`../bridge/README.md`](../bridge/README.md).
+1. EEZ Studio **with the bridge** is running with a project open. Install the **MCP Bridge
+   extension** — see [`../extension/README.md`](../extension/README.md). After installing and
+   restarting EEZ Studio, launching it (or double-clicking a `.eez-project`) starts the bridge.
+   (For bridge internals or rebuilding `bridge/dist`, see [`../bridge/README.md`](../bridge/README.md).)
 2. The MCP server is built:
    ```bash
    cd mcp-server && npm install && npm run build

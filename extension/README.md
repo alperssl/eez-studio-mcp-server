@@ -1,11 +1,10 @@
 # EEZ Studio MCP Bridge — extension (no-patch install)
 
-This packages the bridge as an **EEZ Studio project extension** (`pext`), so you can add
-the MCP bridge to an **official EEZ Studio release without patching it** — it survives app
-updates and installs like any other extension.
+This packages the bridge as an **EEZ Studio project extension** (`pext`) — the way to add
+the MCP bridge to an **official EEZ Studio release without patching it**. It installs like
+any other extension, requires no modification to the app, and survives app updates.
 
-It's an alternative delivery to [`scripts/patch-release.mjs`](../scripts/patch-release.mjs):
-same bridge (`bridge/dist`), same 203 tools — just loaded the extension way.
+It ships the prebuilt bridge (`bridge/dist`) and its full **203 tools**.
 
 ## How it works
 
@@ -59,13 +58,6 @@ Install that `.zip` from **EEZ Studio → Extensions Manager**.
 - **Config file:** `%APPDATA%/eezstudio/eez-mcp-bridge-config.json` (port + enabled).
 - **Env:** `EEZ_MCP_BRIDGE=0` disables autostart; `EEZ_MCP_BRIDGE_PORT` overrides the port.
 
-## Extension vs. patch-release
-
-| | Extension | `patch-release.mjs` |
-|---|---|---|
-| Modifies the app binary | No | Yes (directory-mode, reversible) |
-| Survives app updates | Yes | Re-patch after update |
-| Adds a top **menu-bar** entry | No (Home-tab panel instead) | The from-source fork can |
-| Install | drop-in / Extensions Manager | one command against the install dir |
+The extension requires no modification to EEZ Studio and survives app updates.
 
 Licensed **GPL-3.0-only** — the bridge loads EEZ Studio's GPL modules at runtime.

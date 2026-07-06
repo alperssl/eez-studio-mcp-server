@@ -19,8 +19,8 @@ parts before editing — **do not invent tool params, field names, value formats
 
 ## 0. PRIMARY — live editing via the `eez-studio-mcp` MCP
 
-If the `eez-studio-mcp` tools are available (EEZ Studio with the bridge running — a from-source fork
-or a patched release — with a project open), **use them instead of hand-editing JSON.** Every
+If the `eez-studio-mcp` tools are available (EEZ Studio with the MCP Bridge extension installed and a
+project open), **use them instead of hand-editing JSON.** Every
 mutation goes through EEZ's own `ProjectStore` + undo (**one undo step per call**), `render_page`
 returns EEZ's pixel-exact LVGL-WASM preview, and `run_simulator`/`screenshot_simulator` run the real
 LVGL runtime — so your edits are always model-valid, appear in the GUI instantly, are undoable, and

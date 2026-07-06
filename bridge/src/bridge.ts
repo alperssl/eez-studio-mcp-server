@@ -173,9 +173,9 @@ function startServer(port: number): void {
         logError("the 'ws' module is not available; bridge not started", e);
         return;
     }
-    // ws 8 exposes WebSocketServer; ws 7 (bundled in the official release binary)
-    // exposes it as Server. Support both so the same bridge works from-source and
-    // when injected into the release binary.
+    // ws 8 exposes WebSocketServer; older ws 7 exposes it as Server. Support both so
+    // the bridge works with whichever ws version it resolves at runtime (the extension
+    // bundles its own ws; an app-resolved copy may differ).
     const WSServer = WSModule.WebSocketServer || WSModule.Server;
 
     try {

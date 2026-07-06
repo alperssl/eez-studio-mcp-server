@@ -4,7 +4,7 @@
 //
 //   node scripts/mcp-e2e.mjs
 //
-// Requires the forked EEZ Studio (with the bridge) running with a project open, and a
+// Requires EEZ Studio with the MCP Bridge extension running with a project open, and a
 // prior `npm run build` in this package.
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";

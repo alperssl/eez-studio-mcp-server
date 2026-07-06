@@ -53,75 +53,58 @@ The full wire protocol is in [`docs/PROTOCOL.md`](docs/PROTOCOL.md).
 .
 ├── mcp-server/        # standalone MCP server (stdio) — MIT. Publishable as `eez-studio-mcp`.
 ├── bridge/            # the bridge — GPL-3 (derives from EEZ Studio)
-│   ├── src/           #   bridge TypeScript modules (applied into an EEZ Studio source tree)
-│   ├── dist/          #   prebuilt bridge JS injected into a patched release binary
-│   └── README.md      #   how to build the from-source fork with the bridge
-├── extension/         # ship the bridge as a no-patch EEZ Studio extension (pext) — GPL-3
+│   ├── src/           #   bridge TypeScript source of truth (GPL-3)
+│   ├── dist/          #   prebuilt bridge JS bundled by the extension
+│   └── README.md      #   how maintainers rebuild dist/ from src/
+├── extension/         # ship the bridge as a drop-in EEZ Studio extension (pext) — GPL-3
 │   ├── index.js       #   extension entry: starts the bridge + Home-tab "MCP Bridge" panel
 │   ├── install.mjs    #   drop-in install into the user-data extensions/ folder
 │   └── pack.mjs       #   package as a .zip for the EEZ Studio Extensions Manager
-├── scripts/
-│   ├── apply-bridge.mjs    # apply/revert the bridge in an EEZ Studio source clone (dev path)
-│   └── patch-release.mjs   # inject the bridge into an official release install (exact-parity path)
 ├── docs/
 │   ├── PROTOCOL.md         # authoritative bridge WebSocket protocol (v1)
-│   ├── PATCH-RELEASE.md    # inject the bridge into the official release binary (recommended)
 │   ├── REGISTER.md         # register the MCP server with an agent client
 │   └── eez-studio-usage.md # how EEZ Studio works (agent-facing guide)
 ├── .claude/           # Claude Code assets shipped with the repo
 │   ├── agents/eez-editor.md              # the eez-editor agent (MCP-first, raw-JSON fallback)
 │   └── skills/eez-project-editor/        # exact .eez-project format + live-MCP workflow
 ├── .mcp.json.example  # sample MCP client registration (copy to .mcp.json)
-└── studio/            # OPTIONAL local clone of EEZ Studio for dev/testing.
-                       # Un-vendored and gitignored — you bring your own via `git clone`.
+└── studio/            # OPTIONAL local clone of EEZ Studio — maintainers only,
+                       # for rebuilding bridge/dist. Un-vendored and gitignored.
 ```
 
-> `studio/` is **not** part of the published repo. It is a heavy local clone of
-> EEZ Studio that you create yourself; the bridge is applied into it with
-> `scripts/apply-bridge.mjs`. See [`bridge/README.md`](bridge/README.md).
+> `studio/` is **not** part of the published repo and is **not** needed to use the
+> bridge — users install the `extension/`. It is a heavy local clone of EEZ Studio
+> that maintainers create themselves only to rebuild `bridge/dist` from
+> `bridge/src`. See [`bridge/README.md`](bridge/README.md).
 
 ---
 
 ## Quickstart
 
-### 1. Get EEZ Studio with the bridge — pick one path
+### 1. Install the bridge (EEZ Studio extension)
 
-**Recommended — patch the official release (exact parity).** Injects the bridge
-into an installed EEZ Studio **0.28.0**, so the app *is* the official binary plus
-the bridge: zero dependency drift, and fonts/rendering match the vendor exactly.
-See [`docs/PATCH-RELEASE.md`](docs/PATCH-RELEASE.md).
-
-```bash
-# in-place (reversible with --revert); on Windows the install dir is %LOCALAPPDATA%\Programs\eezstudio
-node scripts/patch-release.mjs --app "<EEZ Studio install dir>"
-```
-
-After patching, launching EEZ Studio — or **double-clicking a `.eez-project`** —
-starts the bridge automatically.
-
-**No-patch — install as an EEZ Studio extension.** Ships the same bridge as a
-drop-in project extension (`pext`): no app modification, and it survives app
-updates. Adds an **MCP Bridge** panel to the Home tab (start/stop, port, token).
-See [`extension/README.md`](extension/README.md).
+Ship the bridge as a drop-in EEZ Studio extension (`pext`): no app modification,
+and it survives app updates. It adds an **MCP Bridge** panel to the Home tab
+(start/stop/restart, port, token, live status). See
+[`extension/README.md`](extension/README.md).
 
 ```bash
-node extension/install.mjs   # copy into the user-data extensions/ folder; restart EEZ Studio
+node extension/install.mjs   # drop-in copy into the user-data extensions/ folder; restart EEZ Studio
 ```
 
-**Dev — build the from-source fork.** Rebuilds EEZ Studio from source with the
-bridge; render-faithful but not byte-identical to the release. See
-[`bridge/README.md`](bridge/README.md).
+Or build a `.zip` for the EEZ Studio **Extensions Manager**, then install it from
+there and restart:
 
 ```bash
-git clone https://github.com/eez-open/studio
-node scripts/apply-bridge.mjs --studio ./studio
-cd studio && npm install && npm run build
-npm start -- "path/to/your.eez-project"
+node extension/pack.mjs      # build the installable .zip
 ```
 
-In all cases, the bridge binds `127.0.0.1`, is token-authenticated, and starts when
-a project is open. Disable with `EEZ_MCP_BRIDGE=0`; configure the port in
-`<userData>/eez-mcp-bridge-config.json` (`%APPDATA%/eezstudio/…` on Windows).
+The bridge binds `127.0.0.1`, is token-authenticated, and autostarts when EEZ
+Studio launches. Disable autostart with `EEZ_MCP_BRIDGE=0`; override the port and
+token with `EEZ_MCP_BRIDGE_PORT` / `EEZ_MCP_BRIDGE_TOKEN`; or set `enabled`/`port`
+persistently in `<userData>/eez-mcp-bridge-config.json`
+(`%APPDATA%/eezstudio/…` on Windows). You can also control it live from the
+`window.eezMcpBridge` DevTools console global.
 
 ### 2. Build & register the MCP server
 
@@ -420,17 +403,17 @@ enums bare without `LV_`, fonts/bitmaps by name).
 
 Two licenses, split at the protocol boundary:
 
-- **`mcp-server/`, `scripts/`, `docs/` — MIT.** The MCP server only speaks the
-  documented WebSocket protocol; it does not link EEZ Studio code, so it stays
-  MIT and independently reusable.
-- **`bridge/` (both `src/` and `dist/`) — GPL-3.** The bridge is compiled into EEZ
+- **`mcp-server/`, `docs/` — MIT.** The MCP server only speaks the documented
+  WebSocket protocol; it does not link EEZ Studio code, so it stays MIT and
+  independently reusable. The `extension/` install/pack scripts (`install.mjs`,
+  `pack.mjs`) are likewise MIT tooling.
+- **`bridge/` (both `src/` and `dist/`) — GPL-3.** The bridge runs inside EEZ
   Studio and calls its internals directly, making it a derivative work of EEZ Studio
-  (GPL-3.0). `scripts/apply-bridge.mjs` and `scripts/patch-release.mjs` are MIT tooling,
-  but any distribution of the resulting bridge-enabled fork **or patched release binary**
-  must comply with GPL-3.
+  (GPL-3.0). The extension bundles the prebuilt `bridge/dist`, so any distribution of
+  the extension (which carries the bridge) must comply with GPL-3.
 
 If you only run things locally, this split has no practical impact. It matters if
-you **redistribute** a bridge-enabled EEZ Studio build.
+you **redistribute** the bridge (for example, inside a packaged extension `.zip`).
 
 ---
 
@@ -441,10 +424,11 @@ you **redistribute** a bridge-enabled EEZ Studio build.
 - Edits go through EEZ Studio's `ProjectStore` + undo/command API — GUI, undo/redo,
   validation, and codegen stay consistent; each tool call is one undo step.
 - Pixel-exact page/widget PNG capture from the LVGL-WASM preview.
-- **Exact-parity install** via `scripts/patch-release.mjs` — the bridge injected into
-  the official 0.28.0 release binary (verified: fonts + rendering match the vendor;
-  double-clicking a `.eez-project` opens the bridged app).
-- Reproducible from-source fork via `scripts/apply-bridge.mjs` (idempotent apply + revert).
+- **Drop-in extension install** via `node extension/install.mjs` (or a packed `.zip`
+  from `node extension/pack.mjs`) — no app modification; the bridge autostarts when
+  EEZ Studio launches and survives app updates.
+- Runtime control from the Home-tab **MCP Bridge** panel (start/stop/restart, port,
+  token, live status) and the `window.eezMcpBridge` DevTools console global.
 - Diagnostics across all three surfaces: static checks, runtime preview console, and EEZ
   toast notifications (e.g. surfaces `Font "…" extraction failed`).
 - Localhost-only, token-authenticated bridge with auto-discovery handshake file.
@@ -465,9 +449,7 @@ you **redistribute** a bridge-enabled EEZ Studio build.
 **Pending / not yet covered**
 - Published npm release of `eez-studio-mcp` (currently built from source).
 - Upstream EEZ Studio versions other than the targeted **v0.28.0** (newer tags
-  may need updates to the apply/patch scripts and `bridge/dist`).
-- The in-app **"MCP Bridge" menu** (Start/Stop/port) exists only in the from-source
-  fork; a patched release install is controlled via its config file + `window.eezMcpBridge`.
+  may need a rebuild of `bridge/dist` against the newer source).
 - Unsolicited change/selection **events** are defined in the protocol but treated
   as optional/ignorable by v1 clients.
 ```

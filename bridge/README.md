@@ -8,14 +8,14 @@ renderer (Electron, `nodeIntegration: true`). It exposes the live `ProjectStore`
 page/widget renders come straight from EEZ's LVGL-WASM preview, so what an agent
 sees is pixel-identical to what a human sees.
 
-Because EEZ Studio does not ship the bridge, you add it yourself. Two ways:
+The bridge is delivered as the **EEZ Studio extension** in [`../extension/`](../extension/)
+— a drop-in `.pext` that bundles the prebuilt bridge and autostarts it inside the
+renderer, with no app patching and no rebuild of EEZ Studio itself. For installation
+and runtime usage, see [`../extension/README.md`](../extension/README.md).
 
-- **Recommended — patch the official release binary** for exact parity with the
-  vendor (fonts/rendering match precisely, no dependency drift). See
-  [`../docs/PATCH-RELEASE.md`](../docs/PATCH-RELEASE.md).
-- **From source (this document)** — clone EEZ Studio, apply the bridge sources
-  with a script from this repo, then build and run. Render-faithful and best for
-  developing the bridge itself, but not byte-identical to the release.
+**This document** covers the bridge's internals — what each source file does, how
+discovery & auth work, the environment variables — and how maintainers **rebuild the
+bundled `bridge/dist` payload from `bridge/src`**.
 
 The wire protocol the bridge speaks is documented in
 [`../docs/PROTOCOL.md`](../docs/PROTOCOL.md).
@@ -26,7 +26,7 @@ The wire protocol the bridge speaks is documented in
 
 ```
 bridge/
-  src/              # the bridge TypeScript sources copied into the fork:
+  src/              # the bridge TypeScript sources (GPL-3 source of truth):
     protocol.ts             # message framing, error codes, handshake-file schema
     project-access.ts       # objID -> object resolution, ProjectStore access helpers
     serialize.ts            # object-model -> JSON (WidgetNode / WidgetDetail shapes)
@@ -35,101 +35,68 @@ bridge/
     notification-capture.ts # ring-buffer of EEZ toast notifications (e.g. font-extraction errors)
     handlers.ts             # one function per protocol method (inspect/edit/render/diagnostics/...)
     bridge.ts               # the WS server + config, start/stop control, and captures
-    index.ts                # startMcpBridge() entry point wired into main.tsx
-  dist/             # prebuilt JS of the above — injected by the release patcher (patch-release.mjs)
+    index.ts                # startMcpBridge() entry point (invoked by the extension)
+  dist/             # prebuilt JS of the above — bundled into the extension in ../extension/
   README.md         # this file
 ```
 
-The apply script lives one level up, at
-[`../scripts/apply-bridge.mjs`](../scripts/apply-bridge.mjs).
+`bridge/src` is the GPL-3 source of truth; `bridge/dist` is the prebuilt payload the
+extension ships. Both live in this repo. See
+[Rebuild the bridge payload](#rebuild-the-bridge-payload-maintainers) below for how the
+`dist` JS is regenerated from `src`.
 
 ---
 
-## Prerequisites
+## Rebuild the bridge payload (maintainers)
 
-- **Node.js 18+.** EEZ Studio's own CI pins Node 16, but Node **20 / 24** build
-  fine *after* the `lz4` removal that the apply script performs (see below).
-- **Git.**
-- **A C/C++ toolchain for `node-gyp`** — EEZ Studio has native dependencies:
-  - **Windows:** Python 3 and the **Visual Studio C++ Build Tools** (the
-    "Desktop development with C++" workload). Install from the Visual Studio
-    Installer or via `npm install -g windows-build-tools` on older setups.
-  - **macOS:** Xcode Command Line Tools (`xcode-select --install`).
-  - **Linux:** `build-essential`, `python3`, and the usual `node-gyp`
-    system packages.
+Users never do this — they just install the extension from [`../extension/`](../extension/).
+This section is only for maintainers who changed `bridge/src` and need to regenerate the
+prebuilt `bridge/dist` JS that the extension bundles.
 
-> **Why the toolchain still matters after removing `lz4`:** `lz4` is not the only
-> native module in EEZ Studio, but it is the one that reliably fails to compile on
-> modern Node/MSVC. Removing it (done automatically) is usually the difference
-> between a green and a red `npm install`.
+The bridge is compiled *against an EEZ Studio checkout* so it resolves the same
+internal modules it links to at runtime. This repo targets EEZ Studio **v0.28.0**.
 
----
+### Prerequisites
 
-## Build the forked EEZ Studio with the bridge
+- **Node.js 18+** (Node **20 / 24** are fine). Building the studio checkout needs a
+  C/C++ toolchain for `node-gyp` — Python 3 plus the platform compiler (Visual Studio
+  C++ Build Tools on Windows, Xcode Command Line Tools on macOS, `build-essential` on
+  Linux). The native `lz4` addon fails to compile on modern Node/MSVC and is not
+  required by the bridge; drop it from the studio checkout's `package.json` if the
+  install fails on it (the lz4 compression EEZ Studio actually uses is a bundled WASM
+  module). Keep the checkout's `package-lock.json` so transitive versions the code
+  needs (notably `@types/plotly.js` 2.x) stay pinned.
 
-Run these from the **root of this repo** unless noted otherwise.
+### Steps
 
-### 1. Clone EEZ Studio
+1. **Get an EEZ Studio v0.28.0 checkout** and install/build it once so its packages
+   resolve:
 
-```bash
-git clone https://github.com/eez-open/studio
-```
+   ```bash
+   git clone https://github.com/eez-open/studio
+   git -C studio checkout v0.28.0
+   ```
 
-This repo targets EEZ Studio **v0.28.0**. A newer tag will usually still work,
-but if the apply script cannot find its anchor lines in `packages/home/main.tsx`
-it will stop with a clear error — in that case check out `v0.28.0`:
+2. **Copy the bridge sources** into the checkout as an internal package:
 
-```bash
-git -C studio checkout v0.28.0
-```
+   ```bash
+   cp bridge/src/*.ts <studio>/packages/mcp-bridge/
+   ```
 
-### 2. Apply the bridge
+3. **Run the studio TypeScript build** so `mcp-bridge/*.ts` compiles against EEZ
+   Studio's own modules.
 
-```bash
-node scripts/apply-bridge.mjs --studio ./studio
-```
+4. **Copy the compiled JS back** from the studio build output into this repo's
+   `bridge/dist`:
 
-This is idempotent (safe to re-run) and:
+   ```bash
+   cp <studio>/build/mcp-bridge/*.js bridge/dist/
+   ```
 
-1. Copies `bridge/src/*.ts` into `studio/packages/mcp-bridge/`.
-2. Wires `startMcpBridge()` into `studio/packages/home/main.tsx`:
-   - adds `import { startMcpBridge } from "mcp-bridge";`
-   - starts the bridge (in a `try/catch`, non-fatal) right after the app mounts.
-3. Removes the native **`lz4`** dependency from `studio/package.json`.
-4. Pins **`lv_font_conv`** to `1.5.2` in `studio/package.json`.
+5. Rebuild the extension so it picks up the fresh payload — see
+   [`../extension/README.md`](../extension/README.md) (`node ../extension/pack.mjs`).
 
-> **Keep `package-lock.json`.** Do **not** delete it before `npm install` — the lockfile
-> pins transitive versions (notably `@types/plotly.js` 2.x) the code needs; a fresh,
-> lockfile-less resolve pulls newer versions that break the `tsc` build.
-
-> **About the two dependency fixes.**
-> - **`lz4`** — a native node-gyp addon that fails to build on modern Node/MSVC. It is
->   optional: the lz4 compression EEZ Studio actually uses is a bundled **WASM** module;
->   the native npm `lz4` is only referenced by LVGL-v9 image conversion behind a `try/catch`.
-> - **`lv_font_conv`** — EEZ declares it as an *unpinned* GitHub branch, so a fresh install
->   pulls a newer commit whose LVGL font-source writer needs an `align` arg EEZ leaves
->   commented out → `Buffer.alloc(NaN)` → `Font "…" extraction failed` and boxed glyphs.
->   Pinning `1.5.2` matches the released binary and extracts fonts correctly. (For *byte-exact*
->   release parity, use the release patcher instead — [`../docs/PATCH-RELEASE.md`](../docs/PATCH-RELEASE.md).)
-
-To undo the source changes (the `lz4` removal and `lv_font_conv` pin are intentional and kept):
-
-```bash
-node scripts/apply-bridge.mjs --studio ./studio --revert
-```
-
-### 3. Install, build, and run
-
-```bash
-cd studio
-npm install
-npm run build
-npm start -- "path/to/your.eez-project"
-```
-
-`npm start` launches the Electron app. Pass the path to a `.eez-project` on the
-command line (or open one from the UI). **The bridge starts automatically as
-soon as a project is open** — there is nothing else to launch.
+Replace `<studio>` with your EEZ Studio checkout directory.
 
 ---
 
@@ -180,35 +147,34 @@ config). Otherwise leave them unset and rely on the handshake file.
 
 ### Runtime control (start / stop / port)
 
-The from-source fork adds an **"MCP Bridge" menu** in the menu bar
-(Start / Stop / Restart / Show Status / Edit Settings). Without the menu, control it via:
+The extension adds an **"MCP Bridge" panel** on the EEZ Studio **Home tab**
+(Start / Stop / Restart, port, token, and live status). You can also control it via:
 
 - the **config file** `<userData>/eez-mcp-bridge-config.json` = `{ "enabled": bool, "port": number }`
-  (`%APPDATA%/eezstudio/…` on Windows) — edit and restart, or use the menu's "Edit Settings";
+  (`%APPDATA%/eezstudio/…` on Windows) — edit and restart;
 - the **console global** `window.eezMcpBridge` in DevTools: `.start()`, `.stop()`, `.restart()`,
   `.status()`, `.setPort(n)`.
 
-A patched **release** install (see [`../docs/PATCH-RELEASE.md`](../docs/PATCH-RELEASE.md)) has the
-same config file + console global, but **not** the menu (its main-process menu is not patched).
+The panel, config file, and console global all read and write the same state, so any one
+of them is enough to manage the bridge.
 
 ---
 
 ## Dev iteration
 
 The bridge is renderer-scoped: it tears down and re-listens across renderer
-reloads and guards against `EADDRINUSE`. That makes the edit loop fast:
+reloads and guards against `EADDRINUSE`. That makes the edit loop fast when you are
+iterating inside a studio checkout (see [Rebuild the bridge
+payload](#rebuild-the-bridge-payload-maintainers)):
 
-1. In the `studio/` checkout, run the TypeScript compiler in watch mode:
-   ```bash
-   npx tsc -w
-   ```
+1. In the `<studio>/packages/mcp-bridge/` sources, run the studio TypeScript compiler
+   in watch mode so edits recompile automatically.
 2. Edit the bridge sources. When they recompile, **reload the renderer** with
    **Ctrl+R** (Cmd+R on macOS) in the running EEZ Studio window. The old bridge
    socket is torn down and a fresh one comes up with a new handshake file.
 
-If you are iterating on the *source of truth* in this repo's `bridge/src/`, re-run
-`node scripts/apply-bridge.mjs --studio ./studio` to copy your changes into the
-fork (it only rewrites files that actually changed), then reload.
+Once you are happy with the changes, copy the recompiled JS back into this repo's
+`bridge/dist` and rebuild the extension, as described in the rebuild section above.
 
 ---
 
@@ -216,8 +182,8 @@ fork (it only rewrites files that actually changed), then reload.
 
 ⚠️ **The bridge is GPL-3.** It is compiled and linked into EEZ Studio and calls
 EEZ Studio internals directly, so it is a **derivative work of EEZ Studio**,
-which is **GPL-3.0**. Any distribution of the forked, bridge-enabled EEZ Studio
-must comply with GPL-3.
+which is **GPL-3.0**. Any distribution of the bridge (its `bridge/src` source and
+the `bridge/dist` payload the extension bundles) must comply with GPL-3.
 
 This is **separate** from the standalone [`mcp-server`](../mcp-server/README.md),
 which talks to the bridge only over the documented WebSocket protocol and is

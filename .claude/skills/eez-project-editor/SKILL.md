@@ -30,7 +30,7 @@ the **offline fallback** for when EEZ Studio is closed (§8).
 
 | Mode | Condition | How you work |
 |---|---|---|
-| **PRIMARY — live MCP** | The `eez-studio-mcp` tools are available (EEZ Studio with the bridge running — a from-source fork or a patched release — with a project open) | Drive the live project via the 203 tools: inspect → edit → **`render_page`** → diagnostics → adjust (§§3–7). |
+| **PRIMARY — live MCP** | The `eez-studio-mcp` tools are available (EEZ Studio with the MCP Bridge extension installed and a project open) | Drive the live project via the 203 tools: inspect → edit → **`render_page`** → diagnostics → adjust (§§3–7). |
 | **FALLBACK — raw-JSON** | Tools absent / return "launch EEZ Studio first" | Hand-edit the `.eez-project` JSON in the exact source-verified format; validate + lint statically (§8). |
 
 If a tool call returns a "launch EEZ Studio first" / bridge-not-running error, the bridge isn't up —
@@ -55,7 +55,7 @@ with the true render.
 
 # PRIMARY — Live editing via the `eez-studio-mcp` MCP
 
-The bridge lives inside the EEZ Studio renderer (a from-source fork or a patched release) and
+The bridge lives inside the EEZ Studio renderer (installed via the MCP Bridge extension) and
 reaches the live `ProjectStore` directly.
 Every mutation goes through `ProjectStore.updateObject/addObject/deleteObject`, so the GUI,
 undo/redo, validation, and code generation stay consistent — **the bridge never writes raw JSON into
