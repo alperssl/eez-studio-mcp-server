@@ -132,6 +132,74 @@ function literalReplaceAll(str, find, replacement, matchCase) {
     }
     return { out: out + str.substring(prev), count };
 }
+// --- ext_click_area injection into the ui.c build template -------------------
+// EEZ has NO model property for a widget's extended click/touch area (it exists only as the
+// LVGL runtime call lv_obj_set_ext_click_area), so set_ext_click_area maintains a self-managed
+// helper in the ui.c template that applies the call to each named object once it exists, called
+// from ui_tick() (works for flow + no-flow, whatever the object-creation timing).
+const EXT_BEGIN = "/* ${eez-mcp:ext_click_area} managed by set_ext_click_area — do not edit */";
+const EXT_END = "/* ${eez-mcp:ext_click_area:end} */";
+const EXT_CALL = "eez_mcp_ext_click_areas(); /* ${eez-mcp:call} */";
+/** Parse the identifier -> size map from the managed block, if present. */
+function parseExtClickAreas(text) {
+    const map = new Map();
+    const bi = text.indexOf(EXT_BEGIN);
+    const ei = text.indexOf(EXT_END);
+    if (bi >= 0 && ei > bi) {
+        const block = text.substring(bi, ei);
+        const re = /objects\.([A-Za-z_][A-Za-z0-9_]*)\s*,\s*(\d+)\s*\)/g;
+        let m;
+        while ((m = re.exec(block)) !== null) {
+            map.set(m[1], parseInt(m[2], 10));
+        }
+    }
+    return map;
+}
+/**
+ * Rewrite the ui.c template so it applies exactly the given identifier -> size map via a
+ * self-managed static helper called from every ui_tick(). Strips any prior managed block +
+ * marked calls first (idempotent). Returns the new template text.
+ */
+function writeExtClickAreas(text, map) {
+    // 1. strip a prior managed block + any marked calls.
+    const bi = text.indexOf(EXT_BEGIN);
+    const ei = text.indexOf(EXT_END);
+    if (bi >= 0 && ei > bi) {
+        text =
+            text.substring(0, bi).replace(/\n+$/, "\n") +
+                text.substring(ei + EXT_END.length).replace(/^\n+/, "");
+    }
+    text = text
+        .split("\n")
+        .filter(l => l.indexOf("${eez-mcp:call}") === -1)
+        .join("\n");
+    if (map.size === 0) {
+        return text; // nothing left to inject
+    }
+    // 2. build the helper (int guard, no <stdbool.h> dependency).
+    let helper = EXT_BEGIN + "\nstatic void eez_mcp_ext_click_areas(void) {\n";
+    for (const [id, sz] of map) {
+        helper +=
+            `    { static int _a = 0; if (!_a && objects.${id}) { ` +
+                `lv_obj_set_ext_click_area(objects.${id}, ${sz}); _a = 1; } }\n`;
+    }
+    helper += "}\n" + EXT_END + "\n";
+    // 3. insert the helper right after the ACTIONS_ARRAY_DEF marker (file scope, before both
+    //    #if/#else ui_tick definitions), else fall back to prepend.
+    const anchor = "//${eez-studio LVGL_ACTIONS_ARRAY_DEF}";
+    const ai = text.indexOf(anchor);
+    if (ai >= 0) {
+        const nl = text.indexOf("\n", ai);
+        const at = nl >= 0 ? nl + 1 : text.length;
+        text = text.substring(0, at) + "\n" + helper + text.substring(at);
+    }
+    else {
+        text = helper + "\n" + text;
+    }
+    // 4. call it from every ui_tick().
+    text = text.replace(/(void\s+ui_tick\s*\(\s*\)\s*\{)/g, `$1\n    ${EXT_CALL}`);
+    return text;
+}
 exports.buildOpsHandlers = {
     // Build in-memory LVGL assets without writing files (fast validation).
     // store.buildAssets() = buildProject(store,"buildAssets"): assembles `parts` in
@@ -297,6 +365,65 @@ exports.buildOpsHandlers = {
             objID: file.objID,
             replacedCount: count,
             changed: true
+        };
+    },
+    // Set (or clear) a widget's LVGL **extended click / touch area**. EEZ has no model property
+    // for this — it is only the runtime call lv_obj_set_ext_click_area — so this injects a
+    // self-managed block into the `ui.c` build template that applies it to `objects.<identifier>`
+    // once the object exists (called from ui_tick, robust to creation timing; survives rebuilds).
+    // Address the widget by `identifier` (its C name) or `objID` (resolved to its identifier).
+    // `size` is the extra px added on all sides; **size 0 removes** the entry. ONE undo step.
+    set_ext_click_area(params) {
+        const store = (0, project_access_1.requireProjectStore)();
+        // Resolve the widget's C identifier (codegen names it objects.<identifier>).
+        let identifier = params.identifier;
+        if (!identifier && params.objID) {
+            const obj = (0, project_access_1.resolveObject)(store, params.objID);
+            identifier = obj && obj.identifier;
+            if (!identifier) {
+                throw new protocol_1.BridgeError("BAD_PARAMS", "That widget has no identifier — set one with set_identifier first " +
+                    "(generated code references it as objects.<identifier>).");
+            }
+        }
+        if (!identifier ||
+            typeof identifier !== "string" ||
+            !/^[A-Za-z_][A-Za-z0-9_]*$/.test(identifier)) {
+            throw new protocol_1.BridgeError("BAD_PARAMS", "identifier (a widget's C identifier) or objID of a widget with an identifier is required.");
+        }
+        const size = Number(params.size);
+        if (!Number.isInteger(size) || size < 0) {
+            throw new protocol_1.BridgeError("BAD_PARAMS", "size (a non-negative integer of extra px on all sides; 0 removes) is required.");
+        }
+        const files = buildFiles(store);
+        const fileName = params.fileName || "ui.c";
+        const uic = files.find((f) => f.fileName === fileName);
+        if (!uic) {
+            throw new protocol_1.BridgeError("NOT_FOUND", `No '${fileName}' build file. Available: ${files
+                .map((f) => f.fileName)
+                .join(", ")}.`);
+        }
+        const before = uic.template != undefined ? uic.template : "";
+        if (!/void\s+ui_tick\s*\(\s*\)\s*\{/.test(before)) {
+            throw new protocol_1.BridgeError("UNSUPPORTED", `'${fileName}' has no ui_tick() to hook — cannot inject the ext_click_area applier.`);
+        }
+        const map = parseExtClickAreas(before);
+        if (size === 0) {
+            map.delete(identifier);
+        }
+        else {
+            map.set(identifier, size);
+        }
+        const after = writeExtClickAreas(before, map);
+        store.updateObject(uic, { template: after });
+        return {
+            fileName: uic.fileName,
+            objID: uic.objID,
+            identifier,
+            size,
+            active: Array.from(map.entries()).map(([id, sz]) => ({
+                identifier: id,
+                size: sz
+            }))
         };
     }
 };

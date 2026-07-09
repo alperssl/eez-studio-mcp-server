@@ -12,7 +12,7 @@ agent/client  ⇄ (stdio, MCP)  ⇄  eez-studio-mcp  ⇄ (localhost WebSocket)  
 
 ## What you can do
 
-The server exposes **207 tools** spanning the full EEZ Studio surface — for **both flow and no-flow LVGL projects** (LVGL **8.4.0 – 9.5.0**, EEZ project schema **v3**). Project mode is read from `settings.general.flowSupport` (`get_project_info` / `get_settings`). [`docs/PROTOCOL.md`](../docs/PROTOCOL.md) is the authoritative, method-by-method contract; the groups below are a map, not the full list.
+The server exposes **208 tools** spanning the full EEZ Studio surface — for **both flow and no-flow LVGL projects** (LVGL **8.4.0 – 9.5.0**, EEZ project schema **v3**). Project mode is read from `settings.general.flowSupport` (`get_project_info` / `get_settings`). [`docs/PROTOCOL.md`](../docs/PROTOCOL.md) is the authoritative, method-by-method contract; the groups below are a map, not the full list.
 
 - **Inspect**: project info/settings, page list, nested widget trees, full widget detail, current selection, widget classes.
 - **Edit** (undoable): create/update/delete widgets, duplicate/move/align, set/clear local styles, flags/states/layout/scroll/grid-cell, bind/unbind events, set identifiers, and widget sub-items (button-matrix buttons, meter indicators/scales, scale sections, spangroup spans).

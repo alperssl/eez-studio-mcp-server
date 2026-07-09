@@ -231,11 +231,12 @@ Learned live/from source — see `LEARNINGS.md` for the full evidence. Apply the
   compile time. On 8.4 only `MAIN`, `CURSOR`, `SELECTED`, `SCROLLBAR` are safe on a Textarea; leave the
   placeholder at its default muted colour. (On 9.x `CUSTOM1` compiles, so it's fine there.) Read
   `lvglVersion` from `get_project_info` first.
-- **`ext_click_area` (extended touch area) is NOT settable.** It is not a property or style in EEZ's
-  `.eez-project` model — only a WASM runtime binding — so `set_style` / `update_widget` / `localStyles`
-  cannot set it, and no tool exposes it. To enlarge a hit area, place a larger transparent widget over the
-  control, or emit `lv_obj_set_ext_click_area(...)` via a build-file template
-  (`set_build_file_template` / `patch_build_file_template` on `ui.c`). Don't keep retrying a style for it.
+- **Extended touch area → use `set_ext_click_area`.** `ext_click_area` is **not** a style/property in
+  EEZ's model (only a runtime call), so `set_style` / `update_widget` / `localStyles` can't set it — don't
+  try. Use the dedicated tool **`set_ext_click_area({ objID | identifier, size })`**: it injects a
+  self-managed `lv_obj_set_ext_click_area(objects.<id>, size)` into the `ui.c` build template that runs once
+  the object exists (survives rebuilds; `size:0` removes it). The widget **must have an `identifier`** — set
+  one with `set_identifier` first if it doesn't.
 
 ---
 

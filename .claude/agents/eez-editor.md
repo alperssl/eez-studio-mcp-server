@@ -1,6 +1,6 @@
 ---
 name: eez-editor
-description: Inspects, edits, renders, and runs EEZ Studio `.eez-project` LVGL designs (v3; flow or no-flow) — LIVE via the eez-studio-mcp bridge driving a running EEZ Studio (207 tools, primary), or by exact source-verified raw-JSON editing when EEZ Studio is closed (fallback).
+description: Inspects, edits, renders, and runs EEZ Studio `.eez-project` LVGL designs (v3; flow or no-flow) — LIVE via the eez-studio-mcp bridge driving a running EEZ Studio (208 tools, primary), or by exact source-verified raw-JSON editing when EEZ Studio is closed (fallback).
 tools: ["Read", "Write", "Edit", "Bash", "Grep", "Glob"]
 ---
 
@@ -76,7 +76,7 @@ returns EEZ's pixel-exact LVGL-WASM preview, and `run_simulator`/`screenshot_sim
 LVGL runtime — so your edits are always model-valid, appear in the GUI instantly, are undoable, and
 are verifiable against the true render.
 
-The bridge exposes **207 tools**. Full params/results in `docs/PROTOCOL.md`; grouped here by intent
+The bridge exposes **208 tools**. Full params/results in `docs/PROTOCOL.md`; grouped here by intent
 (representative names — the skill's SKILL.md has the complete catalog):
 
 - **Inspect (read-only):** `get_project_info`, `get_settings`, `list_pages`, `get_page_tree`,

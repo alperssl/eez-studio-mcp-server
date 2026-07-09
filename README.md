@@ -153,7 +153,7 @@ Studio (with the bridge) first.
 
 ## MCP tools
 
-All 207 tools, grouped. See [`docs/PROTOCOL.md` §4](docs/PROTOCOL.md) for exact
+All 208 tools, grouped. See [`docs/PROTOCOL.md` §4](docs/PROTOCOL.md) for exact
 params/results. Widgets are addressed by stable `objID`; pages by `name`. Values
 use the object-model string form (colors `#rrggbb` or theme name, opacity `0–255`,
 enums bare without `LV_`, fonts/bitmaps by name).

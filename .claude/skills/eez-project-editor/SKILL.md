@@ -1,12 +1,12 @@
 ---
 name: eez-project-editor
-description: Author, edit, render, and run EEZ Studio v3 LVGL ".eez-project" designs (flow or no-flow, LVGL 8.4/9.x) — LIVE via the eez-studio-mcp bridge driving a running EEZ Studio (207 tools, primary), or by exact source-verified raw-JSON editing when EEZ Studio is closed (fallback).
+description: Author, edit, render, and run EEZ Studio v3 LVGL ".eez-project" designs (flow or no-flow, LVGL 8.4/9.x) — LIVE via the eez-studio-mcp bridge driving a running EEZ Studio (208 tools, primary), or by exact source-verified raw-JSON editing when EEZ Studio is closed (fallback).
 ---
 
 # EEZ Studio `.eez-project` LVGL Editor
 
 Design and edit EEZ Studio **version 3, LVGL** projects — **flow or no-flow**, LVGL **8.4 or 9.x** —
-**collaboratively with a running EEZ Studio**, driven through the **`eez-studio-mcp`** bridge (207
+**collaboratively with a running EEZ Studio**, driven through the **`eez-studio-mcp`** bridge (208
 tools). The agent inspects the live project, makes edits that appear in the GUI instantly, and
 self-checks each change against EEZ's own pixel-exact LVGL-WASM preview (and, for behavior, the live
 simulator).
@@ -30,7 +30,7 @@ the **offline fallback** for when EEZ Studio is closed (§8).
 
 | Mode | Condition | How you work |
 |---|---|---|
-| **PRIMARY — live MCP** | The `eez-studio-mcp` tools are available (EEZ Studio with the MCP Bridge extension installed and a project open) | Drive the live project via the 207 tools: inspect → edit → **`render_page`** → diagnostics → adjust (§§3–7). |
+| **PRIMARY — live MCP** | The `eez-studio-mcp` tools are available (EEZ Studio with the MCP Bridge extension installed and a project open) | Drive the live project via the 208 tools: inspect → edit → **`render_page`** → diagnostics → adjust (§§3–7). |
 | **FALLBACK — raw-JSON** | Tools absent / return "launch EEZ Studio first" | Hand-edit the `.eez-project` JSON in the exact source-verified format; validate + lint statically (§8). |
 
 If a tool call returns a "launch EEZ Studio first" / bridge-not-running error, the bridge isn't up —
@@ -60,7 +60,7 @@ rules"* section.
   you find this skill's guidance is wrong or missing a fact, fix it here and log it — see the
   `eez-editor` agent's **Self-learning** protocol. Apply it live with `node tools/learn.mjs` (syncs
   `~/.claude`); publish a general one to GitHub with `node tools/learn.mjs --public "<summary>"`.
-- **`docs/PROTOCOL.md`** (in the `eez-studio-mcp` repo) — the full wire contract for all 207 tools
+- **`docs/PROTOCOL.md`** (in the `eez-studio-mcp` repo) — the full wire contract for all 208 tools
   (exact params + result shapes). The authoritative source when you need a tool's precise signature.
 
 ---
@@ -99,7 +99,7 @@ it is your **ground truth** for every geometry/zoom/clip/style question.
   **Never pass `LV_*` constants or BGR ints.** The `LV_…` prefix and bit codes are added only at
   C-build time.
 
-## 2. The 207 tools, grouped
+## 2. The 208 tools, grouped
 
 Full params + result shapes for **every** tool are in **`docs/PROTOCOL.md`** — the authoritative
 signature source; consult it before a first-time call. Below is the working map, grouped by intent.

@@ -4,7 +4,7 @@ This packages the bridge as an **EEZ Studio project extension** (`pext`) — the
 the MCP bridge to an **official EEZ Studio release without patching it**. It installs like
 any other extension, requires no modification to the app, and survives app updates.
 
-It ships the prebuilt bridge (`bridge/dist`) and its full **207 tools**.
+It ships the prebuilt bridge (`bridge/dist`) and its full **208 tools**.
 
 > **Tip:** to install the extension *and* register the MCP server *and* copy the agent/skill
 > in one step, run the repo's [`install.cmd`](../install.cmd) / [`install.sh`](../install.sh)

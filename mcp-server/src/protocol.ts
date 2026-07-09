@@ -266,6 +266,7 @@ export const METHODS = {
   GET_BUILD_FILE: "get_build_file",
   SET_BUILD_FILE_TEMPLATE: "set_build_file_template",
   PATCH_BUILD_FILE_TEMPLATE: "patch_build_file_template",
+  SET_EXT_CLICK_AREA: "set_ext_click_area",
   // Full simulator & export
   START_FULL_SIMULATOR: "start_full_simulator",
   STOP_FULL_SIMULATOR: "stop_full_simulator",

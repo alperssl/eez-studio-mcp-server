@@ -12,7 +12,7 @@ agent/client ⇄ (stdio, MCP) ⇄ mcp-server (Node) ⇄ (localhost WebSocket, th
 This document is the single source of truth for both sides. It is transport-agnostic about MCP;
 it only defines the **bridge WebSocket protocol**.
 
-**Scope.** The protocol below is the authoritative **207-method** contract covering the *full* EEZ
+**Scope.** The protocol below is the authoritative **208-method** contract covering the *full* EEZ
 Studio project surface: pages/screens, widgets (+ sub-items, flags/states/layout/scroll/grid),
 styles, assets (fonts/bitmaps/colors), variables/enums/structures/user-widgets, groups/themes,
 i18n/texts, project-wide search/references/clipboard/navigation, the visual **flow graph** (flow
@@ -762,6 +762,7 @@ the write tools go through `store.updateObject(file, { template })`. Address a b
 | `get_build_file` | `{ fileName \| index \| objID }` | `{ index, fileName, objID, template }` — READ, full template text |
 | `set_build_file_template` | `{ fileName \| index \| objID, template }` | `{ index, fileName, objID, templateLength }` — replace the whole template (**ONE undo step**) |
 | `patch_build_file_template` | `{ fileName \| index \| objID, find, replacement, matchCase?, expectedCount? }` | `{ index, fileName, objID, replacedCount, changed }` — literal find/replace inside one template (**ONE undo step**) |
+| `set_ext_click_area` | `{ identifier \| objID, size, fileName? }` | `{ fileName, objID, identifier, size, active: [{ identifier, size }] }` — set a widget's LVGL extended click/touch area (**ONE undo step**) |
 
 - `list_build_files` / `get_build_file`: pure reads over `store.project.settings.build.files`. `templateLength` is a
   size hint so you can skip fetching a large template you don't need.
@@ -773,6 +774,13 @@ the write tools go through `store.updateObject(file, { template })`. Address a b
   screen-load animation `lv_scr_load_anim(screen, LV_SCR_LOAD_ANIM_FADE_IN, 200, 0, false)` → `…_NONE, 0`, adding an
   include, tweaking the `loadScreen`/`ui_tick` boilerplate). EEZ's `canReplace()` excludes template bodies, so
   `replace_in_project` cannot write them (it reports them in `skipped`).
+- `set_ext_click_area`: sets a widget's LVGL **extended click / touch area** (`size` px added on all sides).
+  EEZ has **no model property** for this (only the runtime call `lv_obj_set_ext_click_area`), so it is injected
+  as a self-managed block in the `ui.c` template — a `static` helper that runs
+  `lv_obj_set_ext_click_area(objects.<identifier>, size)` once the object exists, called from `ui_tick()` (works
+  for flow + no-flow, any creation timing; survives rebuilds). Address the widget by `identifier` (its C name) or
+  `objID` (resolved to its identifier — the widget **must** have one); **`size:0` removes** it. Re-running for the
+  same identifier updates it (no duplicate). `store.updateObject(uiFile, { template })` — **one undo step**.
 
 ### Full simulator (Docker) & export (NONE are undo commands; project-type / Docker gated)
 The F7 full simulator runs an Emscripten build inside **Docker Desktop** and serves it over a local loopback HTTP

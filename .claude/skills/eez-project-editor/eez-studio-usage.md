@@ -8,7 +8,7 @@
 > [`SKILL.md`](SKILL.md) §2 "Flow"). C-interface details below are labeled *no-flow-specific* with
 > the flow equivalent noted in place. This teaches the *tool*; for the exact `.eez-project` JSON
 > format see [`reference.md`](reference.md) and [`rendering-rules.md`](rendering-rules.md), and for
-> the live editing protocol (all **207 tools**, authoritatively specified in
+> the live editing protocol (all **208 tools**, authoritatively specified in
 > [`docs/PROTOCOL.md`](../../../docs/PROTOCOL.md)) see [`SKILL.md`](SKILL.md) §"Live editing via MCP".
 >
 > Non-obvious claims are cited with a URL or a source-file reference, as in the research guide.

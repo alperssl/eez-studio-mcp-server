@@ -2022,6 +2022,22 @@ registerBridgeTool(METHODS.PATCH_BUILD_FILE_TEMPLATE, {
   },
 });
 
+registerBridgeTool(METHODS.SET_EXT_CLICK_AREA, {
+  title: "Set widget extended click area",
+  description:
+    "Enlarge a widget's LVGL **extended click / touch area** (px added on all sides). EEZ has no model " +
+    "property for this, so it is injected as a self-managed block in the `ui.c` build template that calls " +
+    "lv_obj_set_ext_click_area(objects.<identifier>, size) once the object exists (survives rebuilds). " +
+    "Address the widget by `identifier` (its C name) or `objID`; the widget MUST have an identifier. " +
+    "**size 0 removes** it. Returns { identifier, size, active[] }. One undo step.",
+  inputSchema: {
+    identifier: z.string().optional().describe("The widget's C identifier (as generated: objects.<identifier>)."),
+    objID: objID.optional().describe("Widget objID — resolved to its identifier (mutually exclusive with identifier)."),
+    size: z.number().int().nonnegative().describe("Extra px added on all four sides. 0 removes the widget's ext_click_area."),
+    fileName: z.string().optional().describe('Build file to inject into (default "ui.c").'),
+  },
+});
+
 // --- Full simulator & export -----------------------------------------------
 
 registerBridgeTool(METHODS.START_FULL_SIMULATOR, {
