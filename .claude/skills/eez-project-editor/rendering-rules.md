@@ -206,6 +206,39 @@ A character not covered by the font's `lvglRanges`/`lvglSymbols` renders as an e
 
 ---
 
+## 8. Widget gotchas (buttons, steppers, textareas, hit areas)
+
+Learned live/from source — see `LEARNINGS.md` for the full evidence. Apply these proactively:
+
+- **A Button ships a default "Button" label.** `create_widget { type: "LVGLButtonWidget" }` auto-inserts
+  a child `LVGLLabelWidget` with `text:"Button"`, `identifier:null` (`Button.tsx` defaultValue children).
+  If you add your own icon/label, the stray "Button" still renders behind it. **After creating any
+  button, `get_widget` it and `delete_widget` the child label whose `text==="Button"` and
+  `identifier==null`.**
+- **Zero a Button/Panel's four pads before absolute-positioning children.** LVGL's default theme gives a
+  Button non-zero `MAIN` padding, and EEZ measures a child's `left`/`top` from the **content box** (inside
+  the pad), so hand-placed children land offset (e.g. `+16,+10` on a fresh button). Set
+  `pad_left/pad_top/pad_right/pad_bottom: 0` on the button's `MAIN/DEFAULT` local style (there is no
+  `pad_all` serialized prop — set all four) so child `left`/`top` map from the true top-left. `align:CENTER`
+  children are pad-immune (which is why a centered child looks fine while `left`/`top` ones shift).
+- **A variable-length readout between fixed controls needs a fixed-width box + `text_align CENTER`.** A
+  `content`-width label re-sizes per value ("30 sn" vs "180 sn"), so a hand-centred content label drifts
+  and crowds the − / + buttons. Give the label a **fixed `px` width == the gap** between the controls,
+  keep its anchor, and set `text_align: CENTER` — the box never moves and any string stays centred.
+- **LVGL 8.4: never style a Textarea's `CUSTOM1` / `TEXTAREA_PLACEHOLDER` part.** EEZ emits
+  `LV_PART_CUSTOM1`, which is **undeclared in LVGL 8.4** → generated `screens.c` fails to compile
+  (`'LV_PART_CUSTOM1' undeclared`). `run_checks`/`render_page` do NOT catch it — it only breaks at C
+  compile time. On 8.4 only `MAIN`, `CURSOR`, `SELECTED`, `SCROLLBAR` are safe on a Textarea; leave the
+  placeholder at its default muted colour. (On 9.x `CUSTOM1` compiles, so it's fine there.) Read
+  `lvglVersion` from `get_project_info` first.
+- **`ext_click_area` (extended touch area) is NOT settable.** It is not a property or style in EEZ's
+  `.eez-project` model — only a WASM runtime binding — so `set_style` / `update_widget` / `localStyles`
+  cannot set it, and no tool exposes it. To enlarge a hit area, place a larger transparent widget over the
+  control, or emit `lv_obj_set_ext_click_area(...)` via a build-file template
+  (`set_build_file_template` / `patch_build_file_template` on `ui.c`). Don't keep retrying a style for it.
+
+---
+
 ## Quick reference — working field values
 
 | Goal | Field(s) | Correct value |
